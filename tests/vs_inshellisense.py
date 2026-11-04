@@ -5,7 +5,7 @@ Uses the installed hachikuji (~/.local) and inshellisense (Homebrew).
 Usage: python3 tests/vs_inshellisense.py <hk|is|base> [keys]"""
 import fcntl, os, pty, select, struct, sys, tempfile, termios, time, statistics
 
-root = "/Users/glpecile/Developer/hachikuji"
+root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 mode, n_keys = sys.argv[1], int(sys.argv[2]) if len(sys.argv) > 2 else 300
 hl = "/opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh"
 plug = {
