@@ -75,6 +75,7 @@ pub mod builtin {
 
 /// One node: a command, option, arg, suggestion or generator.
 /// `extra` is: OPT exclusiveOn list, GEN splitOn string, CMD/ARG loadSpec string.
+/// An ARG's `names` is its file filter: ".py" matches a suffix, any other entry a whole name.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Node {
     pub kind: u32,

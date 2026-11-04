@@ -163,11 +163,21 @@ fn arg(w: &mut Writer, v: &Value) -> Node {
     n.flags |= template_flags(v.get("template"));
     let gens = many(v.get("generators"));
     let mut items: Vec<(&Value, u32)> = many(v.get("suggestions")).into_iter().map(|x| (x, kind::SUG)).collect();
+    let mut filter: Vec<String> = Vec::new();
     for g in gens {
         n.flags |= template_flags(g.get("template"));
+        // filepaths({ extensions: ["py"], equals: ["Makefile"] })
+        for e in many(g.get("extensions")).iter().filter_map(|x| x.as_str()) {
+            filter.push(format!(".{}", e.trim_start_matches('.')));
+        }
+        filter.extend(many(g.get("equals")).iter().filter_map(|x| x.as_str()).map(String::from));
         if g.get("script").is_some() || g.get("builtin").is_some() {
             items.push((g, kind::GEN));
         }
+    }
+    if !filter.is_empty() {
+        let filter: Vec<&str> = filter.iter().map(|x| x.as_str()).collect();
+        n.names = w.strs(&filter);
     }
     (n.child, n.nchild) = children(w, items);
     n

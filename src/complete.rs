@@ -58,7 +58,7 @@ struct Walk<'a> {
 pub fn complete(ix: &Index, line: &Line, pwd: &str, cache: &Cache, aliases: &[(String, String)]) -> Out {
     let mut w = Walk { ix, cur: &line.cur, pwd, cache, out: Out::default() };
     if line.redirect {
-        w.paths(false);
+        w.paths(false, &[]);
     } else {
         w.run(&line.words, aliases);
     }
@@ -271,10 +271,11 @@ impl<'a> Walk<'a> {
     }
 
     fn arg(&mut self, a: &Node) {
+        let filter: Vec<&str> = self.ix.strs(a.names).collect();
         if a.has(flag::T_FILES) {
-            self.paths(false);
+            self.paths(false, &filter);
         } else if a.has(flag::T_FOLDERS) {
-            self.paths(true);
+            self.paths(true, &[]);
         }
         let kids: Vec<Node> = self.ix.children(a).map(|c| c.1).collect();
         for c in kids {
@@ -324,7 +325,7 @@ impl<'a> Walk<'a> {
     fn commands(&mut self, aliases: &[(String, String)]) {
         if self.cur.is_empty() || self.cur.contains('/') {
             if self.cur.contains('/') {
-                self.paths(false);
+                self.paths(false, &[]);
             }
             return;
         }
@@ -356,7 +357,8 @@ impl<'a> Walk<'a> {
     }
 
     /// Files and folders for the word being typed: "src/ma" lists "src/" and matches "ma".
-    fn paths(&mut self, dirs_only: bool) {
+    /// `filter` keeps only matching files (".py" is a suffix, else a whole name); folders stay.
+    fn paths(&mut self, dirs_only: bool, filter: &[&str]) {
         let cur = self.cur.to_string();
         let (dir, base) = match cur.rfind('/') {
             Some(p) => (&cur[..=p], &cur[p + 1..]),
@@ -378,7 +380,7 @@ impl<'a> Walk<'a> {
                 continue;
             }
             let is_dir = e.file_type().is_ok_and(|t| t.is_dir() || t.is_symlink() && e.path().is_dir());
-            if dirs_only && !is_dir {
+            if !is_dir && (dirs_only || !filter.is_empty() && !matches_filter(&name, filter)) {
                 continue;
             }
             let Some(s) = score(&name, base) else { continue };
@@ -396,6 +398,11 @@ impl<'a> Walk<'a> {
         }
         self.cur = saved;
     }
+}
+
+fn matches_filter(name: &str, filter: &[&str]) -> bool {
+    let low = name.to_lowercase();
+    filter.iter().any(|f| if f.starts_with('.') { low.ends_with(&f.to_lowercase()) } else { name == *f })
 }
 
 /// The text to insert for a candidate: quoted for the shell, or inside the open quote.

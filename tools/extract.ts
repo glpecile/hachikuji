@@ -151,9 +151,14 @@ function evaluate(n: any, m: Mod, scope: Map<string, any>, depth: number): any {
   if (ts.isCallExpression(n)) {
     const callee = ev(n.expression);
     if (callee && callee.__helper) {
-      // filepaths({ showFolders: "only" }) lists folders only (the cd spec).
+      // filepaths({ showFolders: "only" }) lists folders only (the cd spec). extensions and
+      // equals keep only matching files (python: .py), plus folders.
       const opts = n.arguments.length ? ev(n.arguments[0]) : undefined;
-      return { __template: opts?.showFolders === "only" ? "folders" : callee.__helper };
+      const t: any = { __template: opts?.showFolders === "only" ? "folders" : callee.__helper };
+      const strs = (x: any) => (Array.isArray(x) ? x : [x]).filter((y) => typeof y === "string");
+      if (opts?.extensions) t.extensions = strs(opts.extensions);
+      if (opts?.equals) t.equals = strs(opts.equals);
+      return t;
     }
     // [...].map((x) => ({ ... })) with a one-parameter arrow and an expression body.
     if (ts.isPropertyAccessExpression(n.expression) && n.expression.name.text === "map" && n.arguments.length === 1) {
