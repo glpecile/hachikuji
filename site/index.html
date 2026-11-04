@@ -201,7 +201,14 @@ kbd { font: 500 0.8125rem var(--mono); padding: 0 0.3em; border: 1px solid var(-
 
 @media (prefers-reduced-motion: no-preference) {
   .button, .chip, .copy { transition: transform 160ms var(--ease-out); }
+  /* The page enters once: each block rises out of a blur, 60 ms after the one before. */
+  .enter { animation: enter 700ms var(--ease-out) both; animation-delay: calc(var(--i, 0) * 60ms); }
 }
+@media (prefers-reduced-motion: reduce) {
+  .enter { animation: fade 300ms ease both; }
+}
+@keyframes enter { from { opacity: 0; transform: translateY(8px); filter: blur(6px); } }
+@keyframes fade { from { opacity: 0; } }
 
 /* --- sections -------------------------------------------------------------------------- */
 
@@ -250,6 +257,7 @@ section > p code, li code { font: 0.875em var(--mono); color: var(--fg); }
 
 .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: 0.75rem; }
 .stat { border: 1px solid var(--line); border-radius: 0.75rem; padding: 0.875rem 1rem; }
+.stat .i { font-size: 1.125rem; color: var(--muted); margin-block-end: 0.625rem; }
 .stat strong { display: block; font-size: 1.375rem; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
 .stat span { color: var(--muted); font-size: 0.875rem; }
 
@@ -260,16 +268,16 @@ footer a, section a { color: inherit; text-underline-offset: 0.2em; }
 <body>
 <main>
   <header class="hero">
-    <img src="snail.svg" width="64" height="43" alt="">
-    <h1>hachikuji</h1>
-    <p>An IDE-style completion popup for zsh. It draws with the zsh line editor, so zsh stays in charge of your terminal, and it uses about 2 MB per shell.</p>
-    <div class="actions">
+    <img class="enter" style="--i: 0" src="snail.svg" width="64" height="43" alt="">
+    <h1 class="enter" style="--i: 1">hachikuji</h1>
+    <p class="enter" style="--i: 2">An IDE-style completion popup for zsh. It draws with the zsh line editor, so zsh stays in charge of your terminal, and it uses about 2 MB per shell.</p>
+    <div class="actions enter" style="--i: 3">
       <a class="button primary" href="#install">Get started <svg xmlns="http://www.w3.org/2000/svg" class="i" aria-hidden="true" focusable="false" viewBox="0 0 16 16"><path fill="currentColor" fill-rule="evenodd" d="M8 2a.75.75 0 0 1 .75.75v8.69l3.22-3.22a.75.75 0 1 1 1.06 1.06l-4.5 4.5a.75.75 0 0 1-1.06 0l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.22 3.22V2.75A.75.75 0 0 1 8 2" clip-rule="evenodd"/></svg></a>
       <a class="button" href="https://github.com/glpecile/hachikuji"><svg xmlns="http://www.w3.org/2000/svg" class="i" aria-hidden="true" focusable="false" viewBox="0 0 24 24"><path fill="currentColor" d="M12 .297c-6.63 0-12 5.373-12 12c0 5.303 3.438 9.8 8.205 11.385c.6.113.82-.258.82-.577c0-.285-.01-1.04-.015-2.04c-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729c1.205.084 1.838 1.236 1.838 1.236c1.07 1.835 2.809 1.305 3.495.998c.108-.776.417-1.305.76-1.605c-2.665-.3-5.466-1.332-5.466-5.93c0-1.31.465-2.38 1.235-3.22c-.135-.303-.54-1.523.105-3.176c0 0 1.005-.322 3.3 1.23c.96-.267 1.98-.399 3-.405c1.02.006 2.04.138 3 .405c2.28-1.552 3.285-1.23 3.285-1.23c.645 1.653.24 2.873.12 3.176c.765.84 1.23 1.91 1.23 3.22c0 4.61-2.805 5.625-5.475 5.92c.42.36.81 1.096.81 2.22c0 1.606-.015 2.896-.015 3.286c0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg> GitHub</a>
     </div>
   </header>
 
-  <div class="breakout">
+  <div class="breakout enter" style="--i: 4">
     <div class="term" id="term">
       <ul class="history" id="history" aria-label="Commands you ran"></ul>
       <div class="prompt-line">
@@ -281,16 +289,16 @@ footer a, section a { color: inherit; text-underline-offset: 0.2em; }
       <ul class="popup" id="popup" role="listbox" aria-label="Suggestions"></ul>
     </div>
   </div>
-  <div class="chips" aria-label="Try a command">
+  <div class="chips enter" style="--i: 5" aria-label="Try a command">
     <button class="chip" data-try="git ch">git ch</button>
     <button class="chip" data-try="cd ">cd</button>
     <button class="chip" data-try="make ">make</button>
     <button class="chip" data-try="npm run ">npm run</button>
     <button class="chip" data-try="docker run --r">docker run --r</button>
   </div>
-  <p class="hint">Type in the terminal. <kbd>↑</kbd> <kbd>↓</kbd> move, <kbd>Tab</kbd> inserts, <kbd>Esc</kbd> closes, <kbd>Enter</kbd> runs.</p>
+  <p class="hint enter" style="--i: 5">Type in the terminal. <kbd>↑</kbd> <kbd>↓</kbd> move, <kbd>Tab</kbd> inserts, <kbd>Esc</kbd> closes, <kbd>Enter</kbd> runs.</p>
 
-  <section id="install">
+  <section id="install" class="enter" style="--i: 6">
     <h2>Install</h2>
     <p>One line, for macOS and Linux (arm64):</p>
     <div class="code"><pre><code>curl -fsSL https://github.com/glpecile/hachikuji/releases/latest/download/install.sh | sh</code></pre><button class="copy" type="button" aria-label="Copy"><svg xmlns="http://www.w3.org/2000/svg" class="i" aria-hidden="true" focusable="false" viewBox="0 0 16 16"><path fill="currentColor" fill-rule="evenodd" d="M11.986 3H12a2 2 0 0 1 2 2v6a2 2 0 0 1-1.5 1.937v-2.523a2.5 2.5 0 0 0-.732-1.768L8.354 5.232A2.5 2.5 0 0 0 6.586 4.5H4.063A2 2 0 0 1 6 3h.014A2.25 2.25 0 0 1 8.25 1h1.5a2.25 2.25 0 0 1 2.236 2M10.5 4v-.75a.75.75 0 0 0-.75-.75h-1.5a.75.75 0 0 0-.75.75V4z" clip-rule="evenodd"/><path fill="currentColor" d="M3 6a1 1 0 0 0-1 1v7a1 1 0 0 0 1 1h7a1 1 0 0 0 1-1v-3.586a1 1 0 0 0-.293-.707L7.293 6.293A1 1 0 0 0 6.586 6z"/></svg></button></div>
@@ -323,9 +331,9 @@ fuzzy = true</code></pre><button class="copy" type="button" aria-label="Copy"><s
   <section>
     <h2>Small and fast</h2>
     <div class="stats">
-      <div class="stat"><strong>2.2 MB</strong><span>per shell. inshellisense: 43 MB</span></div>
-      <div class="stat"><strong>11.6 ms</strong><span>key press to popup, p99</span></div>
-      <div class="stat"><strong>1,455</strong><span>Fig specs, in one shared index</span></div>
+      <div class="stat"><svg xmlns="http://www.w3.org/2000/svg" class="i" aria-hidden="true" focusable="false" viewBox="0 0 20 20"><g fill="currentColor"><path d="M14 6H6v8h8z"/><path fill-rule="evenodd" d="M9.25 3V1.75a.75.75 0 0 1 1.5 0V3h1.5V1.75a.75.75 0 0 1 1.5 0V3h.5A2.75 2.75 0 0 1 17 5.75v.5h1.25a.75.75 0 0 1 0 1.5H17v1.5h1.25a.75.75 0 0 1 0 1.5H17v1.5h1.25a.75.75 0 0 1 0 1.5H17v.5A2.75 2.75 0 0 1 14.25 17h-.5v1.25a.75.75 0 0 1-1.5 0V17h-1.5v1.25a.75.75 0 0 1-1.5 0V17h-1.5v1.25a.75.75 0 0 1-1.5 0V17h-.5A2.75 2.75 0 0 1 3 14.25v-.5H1.75a.75.75 0 0 1 0-1.5H3v-1.5H1.75a.75.75 0 0 1 0-1.5H3v-1.5H1.75a.75.75 0 0 1 0-1.5H3v-.5A2.75 2.75 0 0 1 5.75 3h.5V1.75a.75.75 0 0 1 1.5 0V3zM4.5 5.75c0-.69.56-1.25 1.25-1.25h8.5c.69 0 1.25.56 1.25 1.25v8.5c0 .69-.56 1.25-1.25 1.25h-8.5c-.69 0-1.25-.56-1.25-1.25z" clip-rule="evenodd"/></g></svg><strong>2.2 MB</strong><span>per shell. inshellisense: 43 MB</span></div>
+      <div class="stat"><svg xmlns="http://www.w3.org/2000/svg" class="i" aria-hidden="true" focusable="false" viewBox="0 0 20 20"><path fill="currentColor" d="M11.983 1.907a.75.75 0 0 0-1.292-.657l-8.5 9.5A.75.75 0 0 0 2.75 12h6.572l-1.305 6.093a.75.75 0 0 0 1.292.657l8.5-9.5A.75.75 0 0 0 17.25 8h-6.572z"/></svg><strong>11.6 ms</strong><span>key press to popup, p99</span></div>
+      <div class="stat"><svg xmlns="http://www.w3.org/2000/svg" class="i" aria-hidden="true" focusable="false" viewBox="0 0 20 20"><path fill="currentColor" d="M5.127 3.502L5.25 3.5h9.5q.062 0 .123.002A2.25 2.25 0 0 0 12.75 2h-5.5a2.25 2.25 0 0 0-2.123 1.502M1 10.25A2.25 2.25 0 0 1 3.25 8h13.5A2.25 2.25 0 0 1 19 10.25v5.5A2.25 2.25 0 0 1 16.75 18H3.25A2.25 2.25 0 0 1 1 15.75zM3.25 6.5l-.123.002A2.25 2.25 0 0 1 5.25 5h9.5c.98 0 1.814.627 2.123 1.502L16.75 6.5z"/></svg><strong>1,455</strong><span>Fig specs, in one shared index</span></div>
     </div>
   </section>
 
