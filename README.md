@@ -60,6 +60,7 @@ border = "rounded"        # rounded | square | none
 nerd_font = true          # icons; false colors the name by kind instead
 descriptions = true
 selected = "reverse"      # "reverse", or a palette index from 0 to 15 (the row background)
+fuzzy = true              # "chk" finds checkout, but only when no name starts with what you typed
 ```
 
 Default colors: names and descriptions use the default foreground. Borders use palette 8. The icon has the kind color: subcommand 4, option 5, folder 6, command 2.

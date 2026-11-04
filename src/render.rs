@@ -20,11 +20,13 @@ pub struct Config {
     pub descriptions: bool,
     /// None: reverse video. Some(n): background palette color n.
     pub selected: Option<u8>,
+    /// Subsequence matches ("chk" → checkout) when nothing matches by prefix.
+    pub fuzzy: bool,
 }
 
 impl Default for Config {
     fn default() -> Config {
-        Config { max_rows: 8, border: Border::Rounded, nerd_font: true, descriptions: true, selected: None }
+        Config { max_rows: 8, border: Border::Rounded, nerd_font: true, descriptions: true, selected: None, fuzzy: true }
     }
 }
 
@@ -46,6 +48,9 @@ impl Config {
         }
         if let Some(b) = t.get("descriptions").and_then(|v| v.as_bool()) {
             c.descriptions = b;
+        }
+        if let Some(b) = t.get("fuzzy").and_then(|v| v.as_bool()) {
+            c.fuzzy = b;
         }
         if let Some(n) = t.get("selected").and_then(|v| v.as_integer()) {
             if (0..=15).contains(&n) {

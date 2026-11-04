@@ -65,6 +65,11 @@ pub fn complete(ix: &Index, line: &Line, pwd: &str, cache: &Cache, aliases: &[(S
     let mut c = w.out.cands;
     c.sort_by(|a, b| a.score.cmp(&b.score).then(b.priority.cmp(&a.priority)).then_with(|| a.name.cmp(&b.name)));
     c.dedup_by(|a, b| a.name == b.name && a.kind == b.kind);
+    // Subsequence matches only when nothing starts with the typed text: "che" lists checkout and
+    // cherry-pick, not archive.
+    if c.first().is_some_and(|x| x.score < 2) {
+        c.retain(|x| x.score < 2);
+    }
     w.out.cands = c;
     w.out
 }
@@ -78,7 +83,16 @@ fn is_assignment(w: &str) -> bool {
 
 impl<'a> Walk<'a> {
     fn push(&mut self, name: &str, desc: &str, kind: Kind, priority: i32, body: &str, suffix: &'static str, raw: bool) {
-        if let Some(score) = score(name, self.cur) {
+        self.push_any(&[name], desc, kind, priority, body, suffix, raw)
+    }
+
+    /// Shows the first name; matches on the best of all names (`co` finds checkout).
+    #[allow(clippy::too_many_arguments)]
+    fn push_any(&mut self, names: &[&str], desc: &str, kind: Kind, priority: i32, body: &str, suffix: &'static str, raw: bool) {
+        // An alias match ranks after main-name matches: `npm ins` is install before ci (install-clean).
+        let best = names.iter().enumerate().filter_map(|(i, n)| score(n, self.cur).map(|s| if i == 0 { s } else { s.max(1) })).min();
+        let (Some(name), Some(score)) = (names.first(), best) else { return };
+        {
             self.out.cands.push(Cand {
                 name: name.to_string(),
                 desc: desc.to_string(),
@@ -201,9 +215,10 @@ impl<'a> Walk<'a> {
                 for (_, c) in self.ix.children(&node) {
                     if c.kind == kind::CMD && !c.has(flag::HIDDEN) {
                         let ins = self.ix.insert_value(&c);
-                        for n in self.ix.names(&c).take(1) {
+                        let ns: Vec<&str> = self.ix.names(&c).collect();
+                        if let Some(&n) = ns.first() {
                             let (body, raw) = if ins.is_empty() { (n, false) } else { (ins, true) };
-                            self.push(n, self.ix.str(c.desc), Kind::Sub, c.priority, body, if raw { "" } else { " " }, raw);
+                            self.push_any(&ns, self.ix.str(c.desc), Kind::Sub, c.priority, body, if raw { "" } else { " " }, raw);
                         }
                     }
                 }
@@ -255,8 +270,9 @@ impl<'a> Walk<'a> {
             if used.iter().any(|&u| self.ix.strs(self.ix.node(u).extra).any(|x| names.contains(&x))) {
                 continue;
             }
-            // Insert the name that matches best; show all names.
-            let Some(best) = names.iter().filter_map(|n| score(n, self.cur).map(|s| (s, *n))).min_by_key(|(s, n)| (*s, if self.cur.starts_with("--") { !n.starts_with("--") } else { n.starts_with("--") })) else {
+            // Insert the name that matches best; show all names. Options match by prefix with case:
+            // `tar -x` must never become `-X`.
+            let Some(best) = names.iter().filter_map(|n| n.starts_with(self.cur).then_some((0u8, *n))).min_by_key(|(s, n)| (*s, if self.cur.starts_with("--") { !n.starts_with("--") } else { n.starts_with("--") })) else {
                 continue;
             };
             let ins = self.ix.insert_value(&o);
@@ -288,9 +304,10 @@ impl<'a> Walk<'a> {
             if c.kind == kind::SUG && !c.has(flag::HIDDEN) {
                 let k = if c.has(flag::SUG_FOLDER) { Kind::Folder } else if c.has(flag::SUG_FILE) { Kind::File } else { Kind::Arg };
                 let ins = self.ix.insert_value(&c);
-                for n in self.ix.names(&c).take(1) {
+                let ns: Vec<&str> = self.ix.names(&c).collect();
+                if let Some(&n) = ns.first() {
                     let (body, raw) = if ins.is_empty() { (n, false) } else { (ins, true) };
-                    self.push(n, self.ix.str(c.desc), k, c.priority, body, if raw { "" } else { " " }, raw);
+                    self.push_any(&ns, self.ix.str(c.desc), k, c.priority, body, if raw { "" } else { " " }, raw);
                 }
             } else if c.kind == kind::GEN {
                 let gk = match c.builtin() {
@@ -453,6 +470,10 @@ mod tests {
                 {"name":"--yes","insertValue":"--yes {cursor}"}],
               "args":{"name":"x","suggestions":["alpha",{"name":"beta","description":"B"}],
                       "generators":{"script":"printf 'gen1\\ngen2'","splitOn":"\n"}}}"#),
+            ("py", r#"{"name":"py","args":{"generators":{"template":"filepaths","extensions":["py"],"equals":["Pipfile"]}}}"#),
+            ("ch", r#"{"name":"ch","parserDirectives":{"optionsMustPrecedeArguments":true},"options":[{"name":"-R"}],"args":{"name":"f","isVariadic":true}}"#),
+            ("find", r#"{"name":"find","parserDirectives":{"flagsArePosixNoncompliant":true},"options":[{"name":"-n"},{"name":"-name","args":{"name":"p"}}]}"#),
+            ("tar", r#"{"name":"tar","options":[{"name":"-x"},{"name":"-X"},{"name":"--index-file"}]}"#),
         ];
         for (name, j) in more {
             compile::add_root(&mut w, name, &serde_json::from_str(j).unwrap());
@@ -477,7 +498,7 @@ mod tests {
         let n = names(&ix, "git ");
         assert_eq!(&n[..4], ["status", "add", "checkout", "commit"]); // priority 80, then 70s by name
         let n = names(&ix, "git co");
-        assert_eq!(&n[..2], ["commit", "checkout"]); // "co" is an alias of checkout: name order
+        assert_eq!(&n[..2], ["commit", "checkout"]); // "co" is an alias of checkout: after the name match
         assert!(n.iter().skip(2).all(|x| !x.starts_with("co"))); // the rest are fuzzy matches
     }
 
@@ -513,6 +534,28 @@ mod tests {
         assert!(c.iter().all(|x| x.name != "--secret"));
         assert_eq!(insert_text(get("--out"), None), "--out=");
         assert_eq!(insert_text(get("--yes"), None), "--yes ");
+    }
+
+    #[test]
+    fn file_filters_directives_and_matching() {
+        let dir = std::env::temp_dir().join(format!("hk-filter-{}", std::process::id()));
+        std::fs::create_dir_all(dir.join("sub")).unwrap();
+        for f in ["a.py", "B.PY", "b.txt", "Pipfile"] {
+            std::fs::write(dir.join(f), "").unwrap();
+        }
+        let ix = index();
+        let c = |buf: &str| -> Vec<String> {
+            complete(&ix, &tokenize::parse(buf, buf.len()), dir.to_str().unwrap(), &generate::Cache::default(), &[]).cands.into_iter().map(|c| c.name).collect()
+        };
+        assert_eq!(c("py "), ["B.PY", "Pipfile", "a.py", "sub/"]); // extensions, equals, folders
+        assert!(c("ch -").contains(&"-R".to_string()));
+        assert!(c("ch x -").is_empty(), "optionsMustPrecedeArguments");
+        assert_eq!(c("tar -x"), ["-x"]); // never -X or a subsequence
+        assert!(c("git che").iter().all(|n| n.starts_with("che")), "no fuzzy when a prefix matches");
+        assert!(!c("git chkt").is_empty(), "fuzzy when nothing matches by prefix");
+        // -name is one option, so -n is still unused after it.
+        assert!(c("find -name x -").contains(&"-n".to_string()));
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 
     #[test]

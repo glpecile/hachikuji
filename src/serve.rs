@@ -49,7 +49,10 @@ pub struct Shared {
 pub fn respond(e: &Engine, s: &Shared, r: &Request, out: &mut Vec<u8>) -> Vec<generate::Req> {
     let mut line = tokenize::parse(&r.buffer, r.cursor);
     tokenize::expand_aliases(&mut line, &s.aliases);
-    let res = complete::complete(&e.ix, &line, &r.pwd, &s.cache, &s.aliases);
+    let mut res = complete::complete(&e.ix, &line, &r.pwd, &s.cache, &s.aliases);
+    if !e.cfg.fuzzy {
+        res.cands.retain(|c| c.score < 2);
+    }
     let cursor = r.cursor.min(r.buffer.len());
     let replace = r.buffer.get(line.cur_start..cursor).map_or(0, |t| t.chars().count());
     let popup = render::render(&res.cands, r.sel, r.cols, r.lines, &e.cfg);
