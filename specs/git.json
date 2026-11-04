@@ -37,7 +37,7 @@
       "args": [{ "name": "repository" }, { "name": "directory", "isOptional": true, "template": "folders" }] },
     { "name": "commit", "description": "Record changes to the repository", "priority": 70,
       "options": [
-        { "name": ["-m", "--message"], "description": "Use the given message", "isRepeatable": true, "args": { "name": "message" } },
+        { "name": ["-m", "--message"], "description": "Use the given message", "isRepeatable": true, "insertValue": "-m '{cursor}'", "args": { "name": "message" } },
         { "name": ["-a", "--all"], "description": "Stage all modified and deleted files" },
         { "name": "--amend", "description": "Replace the tip of the current branch" },
         { "name": "--no-edit", "description": "Use the selected message without an editor" },

@@ -428,10 +428,15 @@ fn matches_filter(name: &str, filter: &[&str]) -> bool {
     filter.iter().any(|f| if f.starts_with('.') { low.ends_with(&f.to_lowercase()) } else { name == *f })
 }
 
+/// Marks where the cursor goes after an insert (an insertValue's `{cursor}`).
+pub const CURSOR: char = '\x01';
+
 /// The text to insert for a candidate: quoted for the shell, or inside the open quote.
 pub fn insert_text(c: &Cand, quote: Option<char>) -> String {
     if c.raw {
-        return c.body.replace("{cursor}", "");
+        // `-m '{cursor}'`: the cursor goes between the quotes. At the end it needs no mark.
+        let b = c.body.replacen("{cursor}", &CURSOR.to_string(), 1).replace("{cursor}", "");
+        return b.strip_suffix(CURSOR).map_or(b.clone(), String::from);
     }
     match quote {
         Some(q) if c.suffix == " " => format!("{q}{}{q} ", c.body),
@@ -467,7 +472,8 @@ mod tests {
             ("tool", r#"{"name":"tool","options":[
                 {"name":"--out","requiresSeparator":true,"args":{"name":"f"}},
                 {"name":"--secret","hidden":true},
-                {"name":"--yes","insertValue":"--yes {cursor}"}],
+                {"name":"--yes","insertValue":"--yes {cursor}"},
+                {"name":"-e","insertValue":"-e '{cursor}'"}],
               "args":{"name":"x","suggestions":["alpha",{"name":"beta","description":"B"}],
                       "generators":{"script":"printf 'gen1\\ngen2'","splitOn":"\n"}}}"#),
             ("py", r#"{"name":"py","args":{"generators":{"template":"filepaths","extensions":["py"],"equals":["Pipfile"]}}}"#),
@@ -534,6 +540,8 @@ mod tests {
         assert!(c.iter().all(|x| x.name != "--secret"));
         assert_eq!(insert_text(get("--out"), None), "--out=");
         assert_eq!(insert_text(get("--yes"), None), "--yes ");
+        let e = complete(&ix, &tokenize::parse("tool -e", 7), "/", &generate::Cache::default(), &[]).cands;
+        assert_eq!(insert_text(&e[0], None), "-e '\x01'"); // the cursor goes between the quotes
     }
 
     #[test]

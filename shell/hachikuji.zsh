@@ -139,7 +139,11 @@ _hk_finish() { _hk_open=0 _hk_key=; _hk_draw }
 _hk_accept() {
   _hk_sync
   (( _hk_open )) || return 1
-  LBUFFER=${LBUFFER[1,-$(( _hk_replace + 1 ))]}$_hk_insert
+  # \x01 marks where the cursor goes: `-m '\x01'` puts it between the quotes.
+  local ins=$_hk_insert post=
+  [[ $ins == *$'\x01'* ]] && post=${ins#*$'\x01'} ins=${ins%%$'\x01'*}
+  LBUFFER=${LBUFFER[1,-$(( _hk_replace + 1 ))]}$ins
+  RBUFFER=$post$RBUFFER
   # The ghost text was for the old buffer. pre-redraw asks for the next token at once.
   _hk_open=0 _hk_popup= _hk_text= POSTDISPLAY=
   region_highlight=( ${region_highlight:#*memo=hachikuji} )

@@ -242,6 +242,16 @@ if [[ -f $root/build/specs.idx ]]; then
   (( bad == 0 )); check "typed key by key: screen equals a full redraw ($bad of 18 lines differ)" $?
 fi
 
+# 19. an insertValue with {cursor}: the cursor goes between the quotes
+start
+T send-keys 'git commit --mes'
+waitfor "$top*--message"
+T send-keys Tab
+sleep 0.3
+T send-keys 'hi'
+waitfor "❯ git commit -m 'hi'"
+has "❯ git commit -m 'hi'"; check 'cursor goes between the quotes of -m' $?
+
 T kill-server 2>/dev/null || true
 print -r -- "$fails failed"
 (( fails == 0 ))
