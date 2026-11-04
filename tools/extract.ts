@@ -147,7 +147,11 @@ function evaluate(n: any, m: Mod, scope: Map<string, any>, depth: number): any {
   }
   if (ts.isCallExpression(n)) {
     const callee = ev(n.expression);
-    if (callee && callee.__helper) return { __template: callee.__helper };
+    if (callee && callee.__helper) {
+      // filepaths({ showFolders: "only" }) lists folders only (the cd spec).
+      const opts = n.arguments.length ? ev(n.arguments[0]) : undefined;
+      return { __template: opts?.showFolders === "only" ? "folders" : callee.__helper };
+    }
     // [...].map((x) => ({ ... })) with a one-parameter arrow and an expression body.
     if (ts.isPropertyAccessExpression(n.expression) && n.expression.name.text === "map" && n.arguments.length === 1) {
       const arr = ev(n.expression.expression), f = n.arguments[0];
