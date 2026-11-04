@@ -1,6 +1,6 @@
 #!/bin/sh
 # Builds the release archives and the Homebrew formula. Run with `make release`.
-# Each archive: bin/hachikuji, share/hachikuji/{hachikuji.zsh,specs.idx,FIG-LICENSE}, README.md.
+# Each archive: bin/hachikuji, share/hachikuji/{hachikuji.zsh,specs.idx,FIG-LICENSE}, README.md, LICENSE.
 # It publishes nothing: upload with `gh release create v<version> build/release/*.tar.gz build/release/install.sh`.
 set -eu
 cd "$(dirname "$0")/.."
@@ -15,7 +15,7 @@ pack() { # pack <target> <binary>
   mkdir -p "$d/bin" "$d/share/hachikuji"
   cp "$2" "$d/bin/hachikuji"
   cp shell/hachikuji.zsh build/specs.idx specs/FIG-LICENSE "$d/share/hachikuji/"
-  cp README.md "$d/"
+  cp README.md LICENSE "$d/"
   tar -C "$out" -czf "$d.tar.gz" "hachikuji-$v-$1"
   rm -rf "$d"
 }

@@ -203,3 +203,7 @@ git clone https://github.com/glpecile/hachikuji && cd hachikuji && make install
 - A switch between `bindkey -v` and `bindkey -e` after the first prompt is not seen.
 - No popup for commands without a static spec (`cargo`, for example), and no history or usage ranking.
 - zsh only. There are no plans for bash, fish or Windows.
+
+## License
+
+MIT, see [LICENSE](LICENSE). The specs in `build/specs.idx` come from Fig and keep their own MIT notice in `specs/FIG-LICENSE`.

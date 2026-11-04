@@ -3,6 +3,7 @@
 class Hachikuji < Formula
   desc "IDE-style completion popup for zsh that uses almost no memory"
   homepage "https://github.com/glpecile/hachikuji"
+  license "MIT"
   version "@VERSION@"
 
   on_macos do
