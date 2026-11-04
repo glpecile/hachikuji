@@ -6,7 +6,7 @@ hachikuji supports zsh only, on macOS and Linux (aarch64). For bash or fish, sto
 
 ## Rules for agents
 
-1. **Back up each shell startup file before you edit it.** Run `cp ~/.zshrc ~/.zshrc.pre-hachikuji` (also for each other file you change).
+1. **Back up each shell startup file once, before the first edit.** Run `cp -n ~/.zshrc ~/.zshrc.pre-hachikuji` (also for each other file you change). `-n` keeps the first backup if you run it again.
 2. **Remove only the lines this guide names.** Other plugins, prompts and aliases stay.
 3. **Show the user what you will delete** (the lines, the folders) before you delete it. Data folders can hold the user's own settings.
 4. **Do not kill shells.** inshellisense, Kiro and Amazon Q wrap the shell or attach to it. Tell the user to close their old terminal tabs at the end. Do not kill them yourself, because you may be running inside one.
@@ -15,7 +15,8 @@ hachikuji supports zsh only, on macOS and Linux (aarch64). For bash or fish, sto
 ## 1. Find what is installed
 
 ```sh
-for c in kiro-cli q fig inshellisense; do printf '%-14s %s\n' $c "$(whence -p $c 2>/dev/null || echo -)"; done
+# Works in bash and zsh.
+for c in kiro-cli q fig inshellisense; do printf '%-14s %s\n' $c "$(command -v $c 2>/dev/null || echo -)"; done
 ls -d /Applications/{Fig,"Amazon Q","Kiro CLI"}.app ~/.fig ~/.kiro ~/.inshellisense ~/.inshellisenserc \
   ~/.config/inshellisense ~/.local/share/{inshellisense,amazon-q,kiro-cli} \
   "$HOME/Library/Application Support/"{amazon-q,kiro-cli} 2>/dev/null
@@ -29,7 +30,7 @@ grep -nEi '(pre|post) block|amazon-q|kiro-cli|\.fig/|inshellisense|ISTERM' \
 true  # grep and ls exit non-zero when nothing is found: that is not an error
 ```
 
-Go to the section of each tool that the output shows. Skip the others.
+Go to the section of each tool that the output shows. Skip the others. `q` and `fig` are common names: treat them as Amazon Q or Fig only if that tool's app or data folder is also listed.
 
 ## 2. Remove the old tool
 
@@ -78,7 +79,7 @@ The Fig service shut down on 1 September 2024, and Homebrew no longer has a `fig
 2. Delete its lines from `~/.zshrc`: the line that `is init zsh` printed (it sources `~/.local/share/inshellisense/init/zsh/init.zsh`, or a file under `~/.inshellisense`), and lines the user added for it, for example an `is()` wrapper function or an `[[ -n $ISTERM ]]` check.
 3. Remove what is left, after you show it to the user: `~/.local/share/inshellisense`, `~/.inshellisense`, `~/.config/inshellisense`, `~/.inshellisenserc`.
 
-**Check for step 2:** the grep from step 1 prints nothing, and `whence -p kiro-cli q fig inshellisense` prints nothing.
+**Check for step 2:** run the block from step 1 again. The grep prints nothing, `kiro-cli` and `inshellisense` print `-`, and the only paths left are the ones the user chose to keep (for example `~/.kiro`).
 
 ## 3. Install hachikuji
 
@@ -105,6 +106,7 @@ Add the printed line to `~/.zshrc`:
 
 - **Before** the line that sources zsh-syntax-highlighting, which must stay last.
 - **After** zsh-autosuggestions, oh-my-zsh and the prompt (starship, powerlevel10k). The order among these does not matter.
+- If zsh-syntax-highlighting is an oh-my-zsh plugin (in `plugins=(...)`), put the line just **before** `source $ZSH/oh-my-zsh.sh` instead. hachikuji finishes its setup at the first prompt, so plugins that load after it still work.
 - Add the printed line itself, not `eval "$(hachikuji init zsh)"`. The eval starts a process at each shell start.
 
 ```zsh
@@ -118,7 +120,7 @@ Optional settings go in `~/.config/hachikuji/config.toml` (see the README). For 
 ## 5. Verify
 
 ```sh
-zsh -i -c 'typeset -f _hk_pre_redraw >/dev/null && echo hachikuji-loaded'
+zsh -i -c '[[ -x $_hk_bin ]] && typeset -f _hk_pre_redraw >/dev/null && echo hachikuji-loaded'
 ```
 
 The output must be `hachikuji-loaded`, and the grep from step 1 must still print nothing. (Do not check `$ISTERM` or similar variables: your own process may run inside an old wrapped tab and pass them on.) Then tell the user:

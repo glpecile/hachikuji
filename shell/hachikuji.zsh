@@ -1,5 +1,5 @@
 # hachikuji: IDE-style completion popup for zsh. https://github.com/glpecile/hachikuji
-# Add `eval "$(hachikuji init zsh)"` to ~/.zshrc, before zsh-syntax-highlighting.
+# Add the line that `hachikuji init zsh` prints to ~/.zshrc, before zsh-syntax-highlighting.
 #
 # The popup is drawn by ZLE: it goes in POSTDISPLAY (after the ghost text of zsh-autosuggestions)
 # and is colored with region_highlight. The helper (one per shell, started on the first key)
