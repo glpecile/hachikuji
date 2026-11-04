@@ -1,0 +1,98 @@
+{
+  "name": "git",
+  "description": "The stupid content tracker",
+  "options": [
+    { "name": "-C", "description": "Run as if git was started in <path>", "isPersistent": true, "args": { "name": "path", "template": "folders" } },
+    { "name": ["-h", "--help"], "description": "Show help" },
+    { "name": "--version", "description": "Show the git version" },
+    { "name": "--no-pager", "description": "Do not pipe output into a pager", "isPersistent": true }
+  ],
+  "subcommands": [
+    { "name": "add", "description": "Add file contents to the index", "priority": 70,
+      "options": [
+        { "name": ["-A", "--all"], "description": "Add changes from all tracked and untracked files" },
+        { "name": ["-p", "--patch"], "description": "Interactively choose hunks to add" },
+        { "name": ["-n", "--dry-run"], "description": "Do not add, only show" },
+        { "name": ["-u", "--update"], "description": "Update tracked files" }
+      ],
+      "args": { "name": "pathspec", "isVariadic": true, "template": "filepaths" } },
+    { "name": "branch", "description": "List, create, or delete branches",
+      "options": [
+        { "name": ["-d", "--delete"], "description": "Delete a branch", "args": { "name": "branch", "generators": { "builtin": "git-branches" } } },
+        { "name": "-D", "description": "Delete a branch even if not merged", "args": { "name": "branch", "generators": { "builtin": "git-branches" } } },
+        { "name": ["-m", "--move"], "description": "Rename a branch" },
+        { "name": ["-a", "--all"], "description": "List local and remote branches", "exclusiveOn": ["-r", "--remotes"] },
+        { "name": ["-r", "--remotes"], "description": "List remote branches", "exclusiveOn": ["-a", "--all"] }
+      ],
+      "args": { "name": "branch", "isOptional": true } },
+    { "name": ["checkout", "co"], "description": "Switch branches or restore files", "priority": 70,
+      "options": [
+        { "name": "-b", "description": "Create and check out a new branch", "args": { "name": "new-branch" } },
+        { "name": "-B", "description": "Create or reset a branch and check it out", "args": { "name": "new-branch" } },
+        { "name": ["-f", "--force"], "description": "Throw away local changes" }
+      ],
+      "args": [{ "name": "branch", "isOptional": true, "generators": { "builtin": "git-branches" } }, { "name": "pathspec", "isVariadic": true, "isOptional": true, "template": "filepaths" }] },
+    { "name": "clone", "description": "Clone a repository into a new folder",
+      "options": [{ "name": "--depth", "description": "Create a shallow clone", "args": { "name": "depth" } }, { "name": ["-b", "--branch"], "description": "Check out this branch", "args": { "name": "branch" } }],
+      "args": [{ "name": "repository" }, { "name": "directory", "isOptional": true, "template": "folders" }] },
+    { "name": "commit", "description": "Record changes to the repository", "priority": 70,
+      "options": [
+        { "name": ["-m", "--message"], "description": "Use the given message", "isRepeatable": true, "insertValue": "-m '{cursor}'", "args": { "name": "message" } },
+        { "name": ["-a", "--all"], "description": "Stage all modified and deleted files" },
+        { "name": "--amend", "description": "Replace the tip of the current branch" },
+        { "name": "--no-edit", "description": "Use the selected message without an editor" },
+        { "name": "--fixup", "description": "Make a fixup commit", "requiresSeparator": true, "args": { "name": "commit" } },
+        { "name": ["-S", "--gpg-sign"], "description": "GPG-sign the commit" }
+      ],
+      "args": { "name": "pathspec", "isVariadic": true, "isOptional": true, "template": "filepaths" } },
+    { "name": "diff", "description": "Show changes between commits and the working tree",
+      "options": [{ "name": "--staged", "description": "Show staged changes" }, { "name": "--stat", "description": "Show a diffstat" }, { "name": "--name-only", "description": "Show only file names" }],
+      "args": { "name": "path", "isVariadic": true, "isOptional": true, "template": "filepaths" } },
+    { "name": "fetch", "description": "Download objects and refs from a remote",
+      "options": [{ "name": "--all", "description": "Fetch all remotes" }, { "name": ["-p", "--prune"], "description": "Remove deleted remote branches" }],
+      "args": { "name": "remote", "isOptional": true, "generators": { "builtin": "git-remotes" } } },
+    { "name": "init", "description": "Create an empty Git repository", "args": { "name": "directory", "isOptional": true, "template": "folders" } },
+    { "name": "log", "description": "Show commit logs",
+      "options": [{ "name": "--oneline", "description": "One line per commit" }, { "name": "--graph", "description": "Draw the commit graph" }, { "name": ["-n", "--max-count"], "description": "Limit the number of commits", "args": { "name": "number" } }],
+      "args": { "name": "revision", "isOptional": true, "generators": { "builtin": "git-branches" } } },
+    { "name": "merge", "description": "Join two or more histories",
+      "options": [{ "name": "--no-ff", "description": "Always create a merge commit" }, { "name": "--abort", "description": "Abort the merge" }],
+      "args": { "name": "branch", "generators": { "builtin": "git-branches" } } },
+    { "name": "pull", "description": "Fetch and integrate with another branch",
+      "options": [{ "name": "--rebase", "description": "Rebase instead of merge" }, { "name": "--ff-only", "description": "Fast-forward only" }],
+      "args": [{ "name": "remote", "isOptional": true, "generators": { "builtin": "git-remotes" } }, { "name": "branch", "isOptional": true, "generators": { "builtin": "git-branches" } }] },
+    { "name": "push", "description": "Update remote refs", "priority": 70,
+      "options": [
+        { "name": ["-f", "--force"], "description": "Force the update" },
+        { "name": "--force-with-lease", "description": "Force only if the remote is as expected" },
+        { "name": ["-u", "--set-upstream"], "description": "Set the upstream branch" },
+        { "name": "--tags", "description": "Push all tags" }
+      ],
+      "args": [{ "name": "remote", "isOptional": true, "generators": { "builtin": "git-remotes" } }, { "name": "branch", "isOptional": true, "generators": { "builtin": "git-branches" } }] },
+    { "name": "rebase", "description": "Reapply commits on top of another base",
+      "options": [{ "name": ["-i", "--interactive"], "description": "Edit the list of commits" }, { "name": "--continue", "description": "Continue the rebase" }, { "name": "--abort", "description": "Abort the rebase" }],
+      "args": { "name": "upstream", "isOptional": true, "generators": { "builtin": "git-branches" } } },
+    { "name": "remote", "description": "Manage tracked repositories",
+      "subcommands": [
+        { "name": "add", "description": "Add a remote", "args": [{ "name": "name" }, { "name": "url" }] },
+        { "name": "remove", "description": "Remove a remote", "args": { "name": "name", "generators": { "builtin": "git-remotes" } } },
+        { "name": "-v", "description": "Show remote URLs" }
+      ] },
+    { "name": "reset", "description": "Reset current HEAD to the given state",
+      "options": [{ "name": "--hard", "description": "Discard all changes" }, { "name": "--soft", "description": "Keep changes staged" }],
+      "args": { "name": "commit", "isOptional": true, "generators": { "builtin": "git-branches" } } },
+    { "name": "restore", "description": "Restore working tree files",
+      "options": [{ "name": ["-S", "--staged"], "description": "Restore the index" }],
+      "args": { "name": "pathspec", "isVariadic": true, "template": "filepaths" } },
+    { "name": "stash", "description": "Stash the changes in a dirty working tree",
+      "subcommands": [{ "name": "push", "description": "Save local changes" }, { "name": "pop", "description": "Apply and remove the latest stash" }, { "name": "list", "description": "List stashes" }, { "name": "drop", "description": "Remove a stash" }] },
+    { "name": "status", "description": "Show the working tree status", "priority": 80,
+      "options": [{ "name": ["-s", "--short"], "description": "Short format" }, { "name": ["-b", "--branch"], "description": "Show branch information" }] },
+    { "name": "switch", "description": "Switch branches",
+      "options": [{ "name": ["-c", "--create"], "description": "Create a new branch", "args": { "name": "new-branch" } }],
+      "args": { "name": "branch", "generators": { "builtin": "git-branches" } } },
+    { "name": "tag", "description": "Create, list, delete or verify tags",
+      "options": [{ "name": ["-d", "--delete"], "description": "Delete tags", "args": { "name": "tag", "generators": { "builtin": "git-tags" } } }],
+      "args": { "name": "tagname", "isOptional": true } }
+  ]
+}

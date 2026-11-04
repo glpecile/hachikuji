@@ -1,0 +1,35 @@
+# Homebrew formula for the tap glpecile/homebrew-tap (file: Formula/hachikuji.rb).
+# tools/release.sh fills in the version, URLs and checksums.
+class Hachikuji < Formula
+  desc "IDE-style completion popup for zsh that uses almost no memory"
+  homepage "https://github.com/glpecile/hachikuji"
+  version "@VERSION@"
+
+  on_macos do
+    on_arm do
+      url "@URL@/hachikuji-@VERSION@-aarch64-apple-darwin.tar.gz"
+      sha256 "@SHA_ARM@"
+    end
+    on_intel do
+      url "@URL@/hachikuji-@VERSION@-x86_64-apple-darwin.tar.gz"
+      sha256 "@SHA_INTEL@"
+    end
+  end
+
+  def install
+    bin.install "bin/hachikuji"
+    (share/"hachikuji").install Dir["share/hachikuji/*"]
+  end
+
+  def caveats
+    <<~EOS
+      Run `hachikuji init zsh` and add the line it prints to ~/.zshrc,
+      before zsh-syntax-highlighting (which must load last).
+    EOS
+  end
+
+  test do
+    assert_match "source", shell_output("#{bin}/hachikuji init zsh")
+    assert_match "count=", shell_output("#{bin}/hachikuji complete 'git chec'")
+  end
+end

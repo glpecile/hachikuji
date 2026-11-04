@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 160" width="240" height="160" role="img" aria-label="A small smiling snail">
+  <!-- body -->
+  <path d="M28 132 Q20 132 22 124 Q40 112 70 108 L190 108 Q214 108 216 128 Q216 140 196 140 L40 140 Q28 140 28 132 Z" fill="#f6c9a8"/>
+  <!-- head -->
+  <ellipse cx="190" cy="106" rx="30" ry="28" fill="#f6c9a8"/>
+  <!-- antennae -->
+  <path d="M180 82 Q174 58 166 46" stroke="#f6c9a8" stroke-width="6" stroke-linecap="round" fill="none"/>
+  <path d="M200 82 Q206 58 216 46" stroke="#f6c9a8" stroke-width="6" stroke-linecap="round" fill="none"/>
+  <circle cx="166" cy="44" r="7" fill="#f6c9a8"/>
+  <circle cx="216" cy="44" r="7" fill="#f6c9a8"/>
+  <!-- shell -->
+  <circle cx="108" cy="78" r="50" fill="#e8a24a"/>
+  <path d="M108 78 m0 -6 a6 6 0 1 1 -6 6 a12 12 0 0 1 12 -12 a18 18 0 0 1 18 18 a24 24 0 0 1 -24 24 a30 30 0 0 1 -30 -30 a36 36 0 0 1 36 -36"
+        stroke="#b86e1f" stroke-width="7" stroke-linecap="round" fill="none"/>
+  <!-- face -->
+  <ellipse cx="180" cy="104" rx="4.5" ry="6" fill="#3b2a26"/>
+  <ellipse cx="202" cy="104" rx="4.5" ry="6" fill="#3b2a26"/>
+  <circle cx="181.5" cy="101.5" r="1.6" fill="#fff"/>
+  <circle cx="203.5" cy="101.5" r="1.6" fill="#fff"/>
+  <path d="M186 116 Q191 121 196 116" stroke="#3b2a26" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+  <ellipse cx="172" cy="117" rx="6" ry="3.5" fill="#f08a9a" opacity=".7"/>
+  <ellipse cx="210" cy="117" rx="6" ry="3.5" fill="#f08a9a" opacity=".7"/>
+</svg>
