@@ -1,0 +1,20 @@
+# Squash merges take the PR title as the commit subject on main: it must be a conventional commit.
+name: pr-title
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+permissions: {}
+jobs:
+  pr-title:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check that the PR title is a conventional commit
+        env:
+          TITLE: ${{ github.event.pull_request.title }}  # through env, never in the script text
+        run: |
+          re='^(feat|fix|docs|test|build|ci|refactor|perf|chore|revert)(\([a-z0-9._/-]+\))?!?: [^ ].*[^.]$'
+          if [[ ! $TITLE =~ $re ]]; then
+            echo "::error::PR title is not a conventional commit (type(scope): summary): $TITLE"
+            exit 1
+          fi
+          echo "ok: $TITLE"

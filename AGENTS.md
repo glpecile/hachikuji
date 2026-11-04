@@ -5,6 +5,4 @@
 
 ## Git
 
-- **Commit subjects and PR titles** use [Conventional Commits](https://www.conventionalcommits.org): `type(scope): summary`, for example `fix(shell): open the FIFOs non-blocking`. Types: `feat`, `fix`, `docs`, `test`, `build`, `refactor`, `perf`, `chore`. The summary says what changed, not "address review comments".
-- **`main` accepts only squash merges.** The squash commit takes the PR title as its subject and the PR body as its message, so the PR title must be a conventional commit too.
-- One topic per PR. Branch from `main`; GitHub deletes the branch after the merge.
+- **Commit subjects and PR titles** use [Conventional Commits](https://www.conventionalcommits.org): `type(scope): summary`, for example `fix(shell): open the FIFOs non-blocking`. Types: `feat`, `fix`, `docs`, `test`, `build`, `ci`, `refactor`, `perf`, `chore`. The summary says what changed, not "address review comments". The `pr-title` check fails a PR whose title does not match, because the squash commit on `main` takes the PR title.
