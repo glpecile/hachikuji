@@ -3,7 +3,7 @@
 An IDE-style completion popup for zsh, in the style of Fig and inshellisense, that uses almost no memory.
 
 - **No pty wrapper.** ZLE (the zsh line editor) draws the popup. zsh stays the terminal's foreground process, so Herdr and Ghostty show the right folder after `cd`.
-- **About 2 MB per shell.** One small Rust helper per shell. The spec index (14.7 MB, every Fig spec) is a read-only `mmap` file that all shells share. inshellisense uses about 95 MB per terminal.
+- **About 2 MB per shell.** One small Rust helper per shell. The spec index (14.7 MB, every Fig spec) is a read-only `mmap` file that all shells share. inshellisense uses about 43 MB per terminal.
 - **Colors follow the terminal theme.** Only the 16 palette colors, the default colors, and reverse video. When the terminal switches between light and dark, the popup follows with no code and no restart.
 
 ## Install
@@ -70,24 +70,61 @@ Palette 8 is not readable as text: 2.5:1 in Catppuccin Mocha and 1.9:1 in Ghostt
 | Selected row (reverse) | 11.3:1 | 7.1:1 |
 | Border (palette 8) | 2.5:1 | 4.4:1 |
 
-## Measured numbers
+## Numbers
 
-Apple M5, macOS 27 (Darwin 27.0.0), zsh 5.9, release build, full Fig index. Each number comes from a script in `tests/` or `make`; run them again with `make test` and `make bench`.
+Apple M5, macOS 27, zsh 5.9, full Fig index.
 
-| Hard constraint | Target | Measured | How |
+### Compared with inshellisense 0.0.4
+
+Same `.zshrc` (zsh-syntax-highlighting) in a real pty; only the plugin changes. Lower is better.
+
+```mermaid
+xychart-beta horizontal
+    title "Memory per terminal (MB)"
+    x-axis ["hachikuji", "inshellisense"]
+    y-axis "MB" 0 --> 45
+    bar [2.2, 43]
+```
+
+```mermaid
+xychart-beta horizontal
+    title "Time to the first prompt (ms)"
+    x-axis ["zsh alone", "hachikuji", "inshellisense"]
+    y-axis "ms" 0 --> 150
+    bar [18, 19, 141]
+```
+
+```mermaid
+xychart-beta horizontal
+    title "Key press to updated screen, p99 (ms)"
+    x-axis ["zsh alone", "hachikuji", "inshellisense"]
+    y-axis "ms" 0 --> 50
+    bar [5.1, 12.8, 44.2]
+```
+
+| | hachikuji | inshellisense |
+|---|---|---|
+| Processes per terminal | 1 helper, beside zsh | `node` + a pty wrapper, in front of zsh |
+| Installed size | 15 MB | 120 MB + Node (149 MB) |
+
+Memory: `footprint` of 12 open terminals (inshellisense: `node` 13 MB + native 30 MB). The other two charts: `python3 tests/vs_inshellisense.py hk|is|base`.
+
+### Hard constraints
+
+| # | Constraint | Target | Measured |
 |---|---|---|---|
-| 1. No pty wrapper | zsh stays the foreground process | zsh is the terminal's foreground group; the helper has its own session and no terminal. After `cd /tmp`, Herdr (`hc get`) reports foreground `zsh` in `/private/tmp`. | `tests/zsh.zsh` check 14, and `hc get` |
-| 2. No JS or Python runtime | one native binary | one 700 KB Rust binary | `ls -l target/release/hachikuji` |
-| 3. Private memory per helper | < 4 MB | max 2.14 MB, mean 2.08 MB (12 shells: 24.4 MB in all) | `tests/memory.zsh` (`footprint`: dirty pages; the mmap index is clean and shared) |
-| 4a. Latency inside the helper | p99 < 16 ms | p50 0.005 ms, p99 0.134 ms, max 0.172 ms (10,000 key presses) | `make bench` |
-| 4b. Key press to updated popup | p99 < 16 ms | p50 6.4 ms, p99 12.3 ms (static specs). With generators on: p99 12.7 ms. zsh with zsh-syntax-highlighting and no hachikuji: p99 8.8 ms. | `tests/e2e_latency.py` (the max, about 32 ms, is the first key: the helper starts) |
-| 5. Added startup | < 10 ms | 5.3 to 7.8 ms (median of 40). About 2.8 ms of it is the first `add-zle-hook-widget` call, which zsh-syntax-highlighting also makes. | `tests/startup.py` (timed inside zsh, up to the first prompt) |
-| 6. Fail silent | no hang, no error text | A helper stopped with SIGSTOP never blocks typing; after 1 s it is killed and the popup closes; restart at most once a minute. No orphan helper after the shell dies. | `tests/zsh.zsh` checks 15 to 17 |
-| 7. No network, no telemetry | none | The helper has no network code. Built-in generators run local `git` and read `PATH` folders. The 15 script generators kept from the Fig specs run local commands only. | code; `specs/lost.txt` |
-| 8. zsh, macOS first, Linux builds | | macOS arm64 and x86_64; Linux aarch64 builds and passes the unit tests (Docker, `rust:1-slim`) | `make release` |
-| 9. Theme follows the terminal | palette 0 to 15, default colors, attributes | Escape codes on screen: 0, 1, 7, 32 to 36, 39, 90 only | `tests/zsh.zsh` check 12, `cargo test` (`only_palette_colors`) |
+| 1 | No pty wrapper | zsh is the foreground process | yes; Herdr `hc get` shows `zsh` and its folder |
+| 2 | Native only | no JS or Python | one 700 KB Rust binary |
+| 3 | Memory per helper | < 4 MB | max 2.14 MB |
+| 4a | Latency in the helper | p99 < 16 ms | p99 0.13 ms |
+| 4b | Key press to popup | p99 < 16 ms | p99 12.3 ms |
+| 5 | Added startup | < 10 ms | 5.3 to 7.8 ms |
+| 6 | Fail silent | no hang | a hung helper is killed after 1 s |
+| 7 | No network | none | no network code |
+| 8 | Platforms | macOS; Linux builds | macOS arm64, x86_64; Linux aarch64 |
+| 9 | Theme colors | palette 0 to 15 | SGR 0, 1, 7, 32 to 36, 39, 90 only |
 
-Spec index: 14.7 MB for 1,455 Fig specs.
+Scripts: `make bench` (4a), `tests/e2e_latency.py` (4b), `tests/startup.py` (5), `tests/memory.zsh` (3), `tests/zsh.zsh` (1, 6, 9). Spec index: 14.7 MB for 1,455 specs.
 
 ## How it works
 
@@ -137,4 +174,4 @@ What needs JS is dropped and listed in `specs/lost.txt` (268 specs), so it can b
 - Aliases and `PATH` are read when the helper starts; later changes need a new shell.
 - A switch between `bindkey -v` and `bindkey -e` after the first prompt is not seen.
 - No popup for commands without a static spec (`cargo`, for example), and no history or usage ranking.
-- bash, fish and Windows are not supported.
+- zsh only. There are no plans for bash, fish or Windows.
