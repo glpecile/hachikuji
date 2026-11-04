@@ -14,6 +14,7 @@ typeset -g _hk_key= _hk_popup= _hk_text= _hk_insert= _hk_rbuf= _hk_main=emacs
 typeset -gi _hk_open=0 _hk_sel=0 _hk_moved=0 _hk_count=0 _hk_replace=0 _hk_dismissed=0
 # open = "tab" in config.toml: the popup opens on Tab only, then follows typing until it closes.
 typeset -gi _hk_tab=0 _hk_armed=0
+typeset -g _hk_tab1=  # where a Tab did nothing: a second Tab there runs zsh completion
 typeset -gi _hk_seq=0 _hk_inflight=0 _hk_pending=0 _hk_wfd=-1 _hk_rfd=-1 _hk_pid=0 _hk_started=-100
 typeset -gF _hk_sent=0
 typeset -ga _hk_hl
@@ -164,6 +165,9 @@ hachikuji-key() {
     _hk_armed=1 _hk_key=
     return
   fi
+  # A fast Tab after an insert: the popup for the next word is still on its way. Wait for it,
+  # or Tab falls through to zsh completion ("do you wish to see all 1980 possibilities?").
+  [[ $_hk_role[$k] == tab ]] && (( _hk_inflight && ! _hk_open )) && _hk_sync
   if (( _hk_open && _hk_count )); then
     case $_hk_role[$k] in
       up)    (( _hk_sel = (_hk_sel + _hk_count - 1) % _hk_count, _hk_moved = 1 )); _hk_request; return ;;
@@ -173,6 +177,15 @@ hachikuji-key() {
       enter) (( _hk_moved )) && _hk_accept && return
              _hk_open=0 _hk_dismissed=1; _hk_draw ;;
     esac
+  fi
+  # Popup closed: the first Tab does nothing, a second Tab runs zsh completion. A stray Tab never
+  # starts "do you wish to see all 1980 possibilities?". Without a helper, Tab works as before.
+  if [[ $_hk_role[$k] == tab && $KEYMAP != vicmd ]] && (( _hk_wfd >= 0 )); then
+    if [[ $LASTWIDGET != hachikuji-key || $_hk_tab1 != "$CURSOR:$BUFFER" ]]; then
+      _hk_tab1="$CURSOR:$BUFFER"
+      return
+    fi
+    _hk_tab1=
   fi
   local w=$_hk_prev[${KEYMAP/#%main/$_hk_main}:$k]
   [[ $w == (|undefined-key) ]] && return

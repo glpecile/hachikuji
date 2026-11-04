@@ -43,12 +43,12 @@ The helper starts on the first key, not in `.zshrc`.
 | Key | Popup open | Popup closed |
 |---|---|---|
 | Up, Down, Ctrl-P, Ctrl-N, Shift-Tab | Move the selection | The key's own widget (history) |
-| Tab | Insert the selected item | The key's own widget (zsh completion) |
+| Tab | Insert the selected item | Nothing; a second Tab runs the key's own widget (zsh completion) |
 | Enter | Insert the item if you moved the selection; else run the line | Run the line |
 | Esc | Close the popup (after `KEYTIMEOUT`, 0.4 s by default) | The key's own widget (vi command mode) |
 | Right arrow at the end of the line | Accept the zsh-autosuggestions ghost text | Same |
 
-After an insert, hachikuji adds a space (or `/` after a folder) and opens the popup for the next word, so Tab, Tab, Tab builds the line. History recall (Up) opens no popup, so Up keeps walking history. Each key calls the widget that was bound before it, so other plugins' wrappers still run.
+After an insert, hachikuji adds a space (or `/` after a folder) and opens the popup for the next word, so Tab, Tab, Tab builds the line. A fast second Tab waits for that popup (up to 100 ms), so it never starts zsh completion by accident. Some inserts put the cursor in the middle: `git commit --mes` + Tab gives `-m '|'`. History recall (Up) opens no popup, so Up keeps walking history. Each key calls the widget that was bound before it, so other plugins' wrappers still run.
 
 ## Config
 
@@ -119,9 +119,9 @@ Memory: `footprint` of 12 open terminals (inshellisense: `node` 13 MB + native 3
 |---|---|---|---|
 | 1 | No pty wrapper | zsh is the foreground process | yes; Herdr `hc get` shows `zsh` and its folder |
 | 2 | Native only | no JS or Python | one 700 KB Rust binary |
-| 3 | Memory per helper | < 4 MB | max 2.14 MB |
-| 4a | Latency in the helper | p99 < 16 ms | p99 0.13 ms |
-| 4b | Key press to popup | p99 < 16 ms | p99 12.3 ms |
+| 3 | Memory per helper | < 4 MB | max 2.26 MB |
+| 4a | Latency in the helper | p99 < 16 ms | p99 0.16 ms |
+| 4b | Key press to popup | p99 < 16 ms | p99 11.5 ms |
 | 5 | Added startup | < 10 ms | 5.3 to 7.8 ms |
 | 6 | Fail silent | no hang | a hung helper is killed after 1 s |
 | 7 | No network | none | no network code |

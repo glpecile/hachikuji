@@ -273,6 +273,25 @@ T send-keys 'e'
 waitfor "❯ git che*$top*checkout"; r3=$?
 (( r1 == 1 && r2 == 0 && r3 == 0 )); check "open = \"tab\": popup only after Tab ($r1 $r2 $r3)" $?
 
+# 22. a fast second Tab acts on the new popup; it never falls through to zsh completion
+start
+T send-keys 'git ch'
+waitfor "$top*checkout"
+T send-keys Tab Tab
+sleep 0.6
+has "❯ git checkout ?*" && ! has 'possibilities'; check 'fast Tab Tab inserts two items' $?
+
+# 23. popup closed: one Tab does nothing, a second Tab runs zsh completion
+start
+T send-keys 'echo C'
+sleep 0.4
+T send-keys Tab
+sleep 0.4
+has '❯ echo C' && ! has 'Cargo'; r1=$?
+T send-keys Tab
+waitfor '❯ echo Cargo.'; r2=$?  # zsh inserts the common prefix of Cargo.lock and Cargo.toml
+(( r1 == 0 && r2 == 0 )); check "one Tab: nothing; two Tabs: zsh completion ($r1 $r2)" $?
+
 T kill-server 2>/dev/null || true
 print -r -- "$fails failed"
 (( fails == 0 ))
