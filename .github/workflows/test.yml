@@ -9,11 +9,19 @@ permissions:
   contents: read
 jobs:
   cargo-test:
+    name: cargo-test (${{ matrix.os }})
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, ubuntu-latest]
-    runs-on: ${{ matrix.os }}
+        include:
+          # A fixed image, not macos-latest: a new image behind -latest can sit in the queue for
+          # 15 minutes and get cancelled. The check names (macos, linux) stay when the image changes.
+          - os: macos
+            runner: macos-15
+          - os: linux
+            runner: ubuntu-24.04
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - run: cargo test --locked
