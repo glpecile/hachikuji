@@ -1,5 +1,7 @@
-# Unit and golden tests of the helper on both platforms. Required on main by the ruleset.
-# The tmux integration test (tests/zsh.zsh) stays local: run `make test` before a PR.
+# Unit and golden tests of the helper. Required on main by the ruleset.
+# Linux only: the tests are platform-neutral, and macOS runners can sit in the queue for 15 minutes.
+# The macOS behavior (ZLE, FIFOs, terminals) is covered by the local tmux test: run `make test`
+# before a PR.
 name: test
 on:
   pull_request:
@@ -9,18 +11,7 @@ permissions:
   contents: read
 jobs:
   cargo-test:
-    name: cargo-test (${{ matrix.os }})
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          # A fixed image, not macos-latest: a new image behind -latest can sit in the queue for
-          # 15 minutes and get cancelled. The check names (macos, linux) stay when the image changes.
-          - os: macos
-            runner: macos-15
-          - os: linux
-            runner: ubuntu-24.04
-    runs-on: ${{ matrix.runner }}
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
