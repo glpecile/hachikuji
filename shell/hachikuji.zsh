@@ -267,7 +267,10 @@ _hk_setup() {
   zmodload -F zsh/files b:zf_rm 2>/dev/null
   # Compile this file once: the next shells load the .zwc in 0.1 ms instead of 2 ms.
   [[ -w ${_hk_src:h} && ( ! -f $_hk_src.zwc || $_hk_src -nt $_hk_src.zwc ) ]] && zcompile $_hk_src 2>/dev/null
-  local f=${TMPDIR:-/tmp}/hachikuji-keys.$$ km k w line
+  local f=${TMPDIR:-/tmp}/hachikuji-keys.$$.$RANDOM km k w line fd
+  # Create it new (O_EXCL): a file or symlink someone put there first makes setup stop.
+  zmodload zsh/system 2>/dev/null && sysopen -w -o excl,creat -m 600 -u fd $f 2>/dev/null || return
+  exec {fd}>&-
   local -a pass=( forward-char end-of-line vi-forward-char vi-end-of-line vi-add-eol
     forward-word emacs-forward-word vi-forward-word vi-forward-word-end vi-forward-blank-word
     vi-forward-blank-word-end vi-find-next-char vi-find-next-char-skip
