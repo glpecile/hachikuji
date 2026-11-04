@@ -292,6 +292,34 @@ T send-keys Tab
 waitfor '❯ echo Cargo.'; r2=$?  # zsh inserts the common prefix of Cargo.lock and Cargo.toml
 (( r1 == 0 && r2 == 0 )); check "one Tab: nothing; two Tabs: zsh completion ($r1 $r2)" $?
 
+# 24. a full FIFO never freezes the shell: the helper is gone, then a 12 KB paste
+start
+T send-keys 'git '
+waitfor "$top*status"
+kill -9 $(helper) 2>/dev/null
+T send-keys C-u
+sleep 0.2
+T set-buffer -- "echo ${(l:4000::漢:)}"
+T paste-buffer -p
+sleep 0.3
+# The shell must still read keys: run a command whose output is not on the typed line.
+T send-keys C-u 'echo $(( 6 * 7 ))xyz' Enter
+waitfor '42xyz'; r=$?
+T send-keys C-c 2>/dev/null
+(( r == 0 )); check 'a 12 KB paste after the helper died does not freeze the shell' $?
+
+# 25. child processes do not keep the FIFOs, so the helper still exits with the shell
+start
+T send-keys 'git '
+waitfor "$top*status"
+hp=$(helper)
+T send-keys C-u 'sleep 314159 &!' Enter
+sleep 0.5
+T send-keys 'exit' Enter
+sleep 1.5
+! kill -0 $hp 2>/dev/null; check 'helper exits with the shell while a child process runs' $?
+pkill -f 'sleep 314159' 2>/dev/null
+
 T kill-server 2>/dev/null || true
 print -r -- "$fails failed"
 (( fails == 0 ))

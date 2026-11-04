@@ -28,21 +28,43 @@ typeset -gA _hk_prev _hk_role=(
 # --- transport -----------------------------------------------------------------------------
 
 _hk_start() {
-  [[ -x $_hk_bin ]] && zmodload zsh/system 2>/dev/null || return 1
+  [[ -x $_hk_bin ]] && zmodload zsh/system zsh/zselect 2>/dev/null || return 1
   (( EPOCHSECONDS - _hk_started >= 60 )) || return 1  # restart at most once a minute
   _hk_started=$EPOCHSECONDS
   local dir k
   dir=$(command mktemp -d "${TMPDIR:-/tmp}/hachikuji.XXXXXX") 2>/dev/null || return 1
   command mkfifo -m 600 $dir/q $dir/r 2>/dev/null || { command rm -rf -- $dir; return 1 }
   # Read-write opens never block. The helper deletes the folder once it has opened both FIFOs.
-  exec {_hk_wfd}<>$dir/q {_hk_rfd}<>$dir/r
+  # Close-on-exec: a child process (`sleep 1000 &!`) must not keep the FIFOs, or the helper
+  # outlives the shell. Non-blocking writes: a FIFO holds 8 KB, and a helper that does not read
+  # must never freeze the shell (_hk_send).
+  sysopen -r -w -o nonblock,cloexec -u _hk_wfd $dir/q 2>/dev/null &&
+    sysopen -r -w -o cloexec -u _hk_rfd $dir/r 2>/dev/null || { _hk_stop; command rm -rf -- $dir; return 1 }
   # &! disowns it: no job entry, own process group. The helper then calls setsid().
   $_hk_bin serve $dir </dev/null >/dev/null 2>&1 {_hk_wfd}>&- {_hk_rfd}>&- &!
   _hk_pid=$!
   zle -F -w $_hk_rfd hachikuji-recv
   local -a al
   for k in ${(k)aliases}; do al+=( "alias ${(q)k}=${(q)aliases[$k]}" ); done
-  print -rn -u $_hk_wfd -- $'1\0a\0'"${(F)al[1,500]}"$'\0' || { _hk_stop; return 1 }
+  _hk_send $'1\0a\0'"${(F)al[1,500]}"$'\0'
+}
+
+# Writes one frame. The helper reads all the time, so a frame larger than the FIFO goes in
+# parts. A helper that reads nothing for 100 ms (stopped, gone) is stopped: the shell never waits.
+_hk_send() {
+  emulate -L zsh
+  local LC_ALL=C data=$1  # byte offsets
+  local -i n tries=0
+  while (( $#data )); do
+    if syswrite -c n -o $_hk_wfd -- $data 2>/dev/null; then
+      data=${data[n+1,-1]}
+    elif (( ++tries > 10 )); then
+      _hk_stop
+      return 1
+    else
+      zselect -t 1 -w $_hk_wfd 2>/dev/null  # up to 10 ms until the helper reads
+    fi
+  done
 }
 
 _hk_stop() {
@@ -59,9 +81,7 @@ _hk_request() {
   local -i bytes
   () { local LC_ALL=C; bytes=${#1} } "$LBUFFER"  # CURSOR counts characters, the helper wants bytes
   _hk_pending=0 _hk_inflight=$(( ++_hk_seq )) _hk_sent=$EPOCHREALTIME
-  print -rn -u $_hk_wfd -- \
-    "1"$'\0'q$'\0'$_hk_seq$'\0'$bytes$'\0'$PWD$'\0'$COLUMNS$'\0'$LINES$'\0'$_hk_sel$'\0'$BUFFER$'\0' ||
-    _hk_stop
+  _hk_send "1"$'\0'q$'\0'$_hk_seq$'\0'$bytes$'\0'$PWD$'\0'$COLUMNS$'\0'$LINES$'\0'$_hk_sel$'\0'$BUFFER$'\0'
 }
 
 # Reads what the helper wrote and handles each complete frame. $1: seconds to wait for data.
