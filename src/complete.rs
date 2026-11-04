@@ -445,12 +445,41 @@ pub fn insert_text(c: &Cand, quote: Option<char>) -> String {
         return b.strip_suffix(CURSOR).map_or(b.clone(), String::from);
     }
     match quote {
-        Some(q) if c.suffix == " " => format!("{q}{}{q} ", c.body),
-        Some(q) => format!("{q}{}{}", c.body, c.suffix),
+        Some(q) => {
+            // Inside '…' (and $'…') a quote is '\''. Inside "…", $ ` " \ need a backslash.
+            let body = if q == '\'' {
+                c.body.replace('\'', "'\\''")
+            } else {
+                c.body.chars().flat_map(|ch| if "$`\"\\".contains(ch) { vec!['\\', ch] } else { vec![ch] }).collect()
+            };
+            if c.suffix == " " { format!("{q}{body}{q} ") } else { format!("{q}{body}{}", c.suffix) }
+        }
+        // Tab, newline and other control characters only work inside $'…'.
+        None if c.body.chars().any(|ch| ch.is_control()) => {
+            let mut s = String::from("$'");
+            for ch in c.body.chars() {
+                match ch {
+                    '\\' | '\'' => {
+                        s.push('\\');
+                        s.push(ch);
+                    }
+                    '\t' => s.push_str("\\t"),
+                    '\n' => s.push_str("\\n"),
+                    ch if ch.is_control() => s.push_str(&format!("\\x{:02x}", ch as u32)),
+                    ch => s.push(ch),
+                }
+            }
+            s.push('\'');
+            s.push_str(c.suffix);
+            s
+        }
         None => {
             let mut s = String::with_capacity(c.body.len() + 2);
-            for ch in c.body.chars() {
-                if " !\"#$&'()*;<>?[\\]^`{|}".contains(ch) {
+            for (i, ch) in c.body.chars().enumerate() {
+                // A leading ~ (tilde expansion) or = (command path expansion) is literal in a
+                // file name. A typed "~/" prefix stays: the body then has a slash.
+                let lead = i == 0 && (ch == '=' || ch == '~' && !c.body.contains('/'));
+                if lead || " !\"#$&'()*;<>?[\\]^`{|}".contains(ch) {
                     s.push('\\');
                 }
                 s.push(ch);
@@ -548,6 +577,27 @@ mod tests {
         assert_eq!(insert_text(get("--yes"), None), "--yes ");
         let e = complete(&ix, &tokenize::parse("tool -e", 7), "/", &generate::Cache::default(), &[]).cands;
         assert_eq!(insert_text(&e[0], None), "-e '\x01'"); // the cursor goes between the quotes
+    }
+
+    #[test]
+    fn quoting_of_inserted_names() {
+        let f = |body: &str, suffix: &'static str| Cand {
+            name: body.into(),
+            desc: String::new(),
+            kind: Kind::File,
+            priority: 0,
+            score: 0,
+            body: body.into(),
+            suffix,
+            raw: false,
+        };
+        assert_eq!(insert_text(&f("it's", "/"), Some('\'')), "'it'\\''s/");
+        assert_eq!(insert_text(&f("a$b.txt", " "), Some('"')), "\"a\\$b.txt\" ");
+        assert_eq!(insert_text(&f("~home", " "), None), "\\~home ");
+        assert_eq!(insert_text(&f("~/Desktop", "/"), None), "~/Desktop/"); // typed ~/ stays
+        assert_eq!(insert_text(&f("=x", " "), None), "\\=x ");
+        assert_eq!(insert_text(&f("a\tb", " "), None), "$'a\\tb' ");
+        assert_eq!(insert_text(&f("my file", " "), None), "my\\ file ");
     }
 
     #[test]
