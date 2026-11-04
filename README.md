@@ -1,5 +1,7 @@
 # hachikuji
 
+<p align="center"><img src="docs/snail.svg" width="200" alt="A small smiling snail"></p>
+
 An IDE-style completion popup for zsh, in the style of Fig and inshellisense, that uses almost no memory.
 
 - **No pty wrapper.** ZLE (the zsh line editor) draws the popup. zsh stays the terminal's foreground process, so Herdr and Ghostty show the right folder after `cd`.
