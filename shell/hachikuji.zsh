@@ -308,6 +308,18 @@ _hk_setup() {
     zle -A autosuggest-suggest hachikuji-orig-suggest
     zle -N autosuggest-suggest hachikuji-suggest
   fi
+  # zsh-autosuggestions highlights all of POSTDISPLAY (fg=8), and the popup is in it: the popup
+  # text would turn gray. Let it see only its ghost text. (fg=default cannot override it: zsh
+  # stores that as "none".)
+  if (( $+functions[_zsh_autosuggest_highlight_apply] && ! $+functions[_hk_orig_highlight_apply] )); then
+    functions -c _zsh_autosuggest_highlight_apply _hk_orig_highlight_apply
+    _zsh_autosuggest_highlight_apply() {
+      local pd=$POSTDISPLAY
+      POSTDISPLAY=${POSTDISPLAY%"$_hk_popup"}
+      _hk_orig_highlight_apply "$@"
+      POSTDISPLAY=$pd
+    }
+  fi
   # Ctrl-C is SIGINT: no widget and no zle-line-finish runs, so the popup would stay in the
   # scrollback. On resize, ZLE redraws the old rows without line-pre-redraw, and they wrap.
   # Keep a TRAP function the user already has; skip if a string trap is set.

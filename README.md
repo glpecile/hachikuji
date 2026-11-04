@@ -150,6 +150,7 @@ zsh (shell/hachikuji.zsh)                       hachikuji serve (Rust, one per s
 ### Things other plugins need to know
 
 - zsh-autosuggestions accepts its ghost text with `BUFFER+=$POSTDISPLAY`. hachikuji removes the popup before the accept widgets run: the ones in `ZSH_AUTOSUGGEST_ACCEPT_WIDGETS`, `ZSH_AUTOSUGGEST_EXECUTE_WIDGETS` and `ZSH_AUTOSUGGEST_PARTIAL_ACCEPT_WIDGETS`, and `autosuggest-accept`, `autosuggest-execute` and `autosuggest-partial-accept`. It adds its own widgets to `ZSH_AUTOSUGGEST_IGNORE_WIDGETS`.
+- zsh-autosuggestions colors all of `POSTDISPLAY` with its ghost-text style. hachikuji wraps `_zsh_autosuggest_highlight_apply` so that it sees only the ghost text, and the popup keeps its colors.
 - In async mode, zsh-autosuggestions sets `POSTDISPLAY` from a `zle -F` handler, which does not run `line-pre-redraw`. hachikuji wraps `autosuggest-suggest` to put the popup back.
 - Ctrl-C is a signal, so no widget and no `zle-line-finish` runs. hachikuji defines `TRAPINT` and `TRAPWINCH` (resize) to clear or redraw the popup. It calls a `TRAPINT` or `TRAPWINCH` function you already have, and it skips a signal that has a string trap.
 

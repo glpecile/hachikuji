@@ -338,6 +338,17 @@ T send-keys Tab
 waitfor "❯ git checkout"; r=$?
 (( r == 0 )) && ! has 'bad output' && ! has 'hachikuji.zsh'; check 'Tab works with sh_word_split and ksh_arrays, no error text' $?
 
+# 28. the popup keeps its colors when zsh-autosuggestions highlights the ghost text again
+start
+T send-keys 'git sta'
+waitfor "$top*status"
+T send-keys Left
+sleep 0.5
+row=$(esc | grep -aF 'Show the working tree')
+pre=${row%%Show the working tree*}
+last=${pre##*$'\e['}  # the last color code before the description: 39m (default), never 90m (gray)
+[[ -n $row && $last != 90m* ]]; check "popup text is not gray after Left (${last%%m*})" $?
+
 T kill-server 2>/dev/null || true
 print -r -- "$fails failed"
 (( fails == 0 ))
