@@ -397,7 +397,13 @@ impl<'a> Walk<'a> {
         };
         let Ok(rd) = std::fs::read_dir(if path.is_empty() { "/" } else { &path }) else { return };
         let saved = std::mem::replace(&mut self.cur, "");
-        for e in rd.flatten().take(1000) {
+        let start = self.out.cands.len();
+        // Filter first, then cap: in a folder of 1,500 files, `rep` must still find report.pdf.
+        // ponytail: reads at most 20,000 entries per key; a bigger folder shows a partial list.
+        for e in rd.flatten().take(20_000) {
+            if self.out.cands.len() - start >= 1000 {
+                break;
+            }
             let Ok(name) = e.file_name().into_string() else { continue };
             if name.starts_with('.') && !base.starts_with('.') {
                 continue;
@@ -542,6 +548,21 @@ mod tests {
         assert_eq!(insert_text(get("--yes"), None), "--yes ");
         let e = complete(&ix, &tokenize::parse("tool -e", 7), "/", &generate::Cache::default(), &[]).cands;
         assert_eq!(insert_text(&e[0], None), "-e '\x01'"); // the cursor goes between the quotes
+    }
+
+    #[test]
+    fn big_folders_filter_before_the_cap() {
+        let dir = std::env::temp_dir().join(format!("hk-big-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        for i in 0..1500 {
+            std::fs::write(dir.join(format!("f{i:04}")), "").unwrap();
+        }
+        std::fs::write(dir.join("report.pdf"), "").unwrap();
+        let ix = index();
+        let line = tokenize::parse("git add rep", 11);
+        let c = complete(&ix, &line, dir.to_str().unwrap(), &generate::Cache::default(), &[]).cands;
+        assert_eq!(c.first().map(|x| x.name.as_str()), Some("report.pdf"));
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 
     #[test]
