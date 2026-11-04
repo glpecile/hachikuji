@@ -32,14 +32,6 @@ Homebrew:
 brew install glpecile/tap/hachikuji
 ```
 
-Both need the first release to be published.
-
-From source (needs `rustup`, `bun` and `git`; installs to `~/.local`, or to `PREFIX=...`):
-
-```sh
-git clone https://github.com/glpecile/hachikuji && cd hachikuji && make install
-```
-
 Then add the line that `hachikuji init zsh` prints to `~/.zshrc`, **before** zsh-syntax-highlighting (it must load last). Add the printed line, not `eval "$(hachikuji init zsh)"`: the eval would start the binary at each shell start.
 
 ```zsh
@@ -181,6 +173,16 @@ What needs JS is dropped and listed in `specs/lost.txt` (262 specs), so it can b
 | zoxide folders | `z` | `zoxide query --list` (most used first) |
 
 `filepaths()` and `folders()` map to the file and folder templates, with their `extensions` and `equals` filters (`python3` lists `.py` files). The parser directives `optionsMustPrecedeArguments` and `flagsArePosixNoncompliant` are kept. Specs that are not static at all (20, for example `cargo`) give no popup.
+
+## Development
+
+Build and install from source (needs `rustup`, `bun` and `git`; installs to `~/.local`, or to `PREFIX=...`):
+
+```sh
+git clone https://github.com/glpecile/hachikuji && cd hachikuji && make install
+```
+
+`make test` runs every check in the table below; `make unit` runs only `cargo test`.
 
 ## Tests
 
