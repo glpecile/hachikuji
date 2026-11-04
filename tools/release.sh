@@ -1,7 +1,7 @@
 #!/bin/sh
 # Builds the release archives and the Homebrew formula. Run with `make release`.
 # Each archive: bin/hachikuji, share/hachikuji/{hachikuji.zsh,specs.idx,FIG-LICENSE}, README.md.
-# It publishes nothing: upload with `gh release create v<version> build/release/*.tar.gz`.
+# It publishes nothing: upload with `gh release create v<version> build/release/*.tar.gz build/release/install.sh`.
 set -eu
 cd "$(dirname "$0")/.."
 PATH=/opt/homebrew/opt/rustup/bin:$HOME/.cargo/bin:$PATH
@@ -36,4 +36,5 @@ url="https://github.com/glpecile/hachikuji/releases/download/v$v"
 sed -e "s|@VERSION@|$v|g" -e "s|@URL@|$url|g" \
     -e "s|@SHA_ARM@|$(sha aarch64-apple-darwin)|" -e "s|@SHA_INTEL@|$(sha x86_64-apple-darwin)|" \
     packaging/homebrew/hachikuji.rb.in > "$out/hachikuji.rb"
+sed "s|@VERSION@|$v|g" packaging/install.sh.in > "$out/install.sh"
 ls -l "$out"

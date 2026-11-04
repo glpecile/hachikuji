@@ -1,0 +1,29 @@
+#!/bin/sh
+# Installs hachikuji @VERSION@ to $PREFIX (default ~/.local).
+#   curl -fsSL https://github.com/glpecile/hachikuji/releases/latest/download/install.sh | sh
+# tools/release.sh fills in the version and uploads this file with the archives.
+set -eu
+v=@VERSION@
+url=${HACHIKUJI_URL:-https://github.com/glpecile/hachikuji/releases/download/v$v}
+prefix=${PREFIX:-$HOME/.local}
+
+case "$(uname -s)-$(uname -m)" in
+  Darwin-arm64) t=aarch64-apple-darwin ;;
+  Darwin-x86_64) t=x86_64-apple-darwin ;;
+  Linux-aarch64 | Linux-arm64) t=aarch64-unknown-linux-gnu ;;
+  *) echo "hachikuji: no build for $(uname -s) $(uname -m)" >&2; exit 1 ;;
+esac
+
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
+echo "Downloading hachikuji $v ($t)"
+curl -fsSL "$url/hachikuji-$v-$t.tar.gz" | tar -xz -C "$tmp"
+d="$tmp/hachikuji-$v-$t"
+
+# install(1) unlinks the old file first, so running helpers keep their mmap of the old index.
+install -d "$prefix/bin" "$prefix/share/hachikuji"
+install -m 755 "$d/bin/hachikuji" "$prefix/bin/hachikuji"
+install -m 644 "$d"/share/hachikuji/* "$prefix/share/hachikuji/"
+
+echo "Installed to $prefix. Add this line to ~/.zshrc, before zsh-syntax-highlighting:"
+"$prefix/bin/hachikuji" init zsh

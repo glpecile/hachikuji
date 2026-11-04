@@ -8,11 +8,19 @@ An IDE-style completion popup for zsh, in the style of Fig and inshellisense, th
 
 ## Install
 
-Homebrew (after the first release is published):
+Script (macOS, Linux aarch64; installs to `~/.local`, or to `$PREFIX`):
+
+```sh
+curl -fsSL https://github.com/glpecile/hachikuji/releases/latest/download/install.sh | sh
+```
+
+Homebrew:
 
 ```sh
 brew install glpecile/tap/hachikuji
 ```
+
+Both need the first release to be published.
 
 From source (needs `rustup`, `bun` and `git`; installs to `~/.local`):
 
