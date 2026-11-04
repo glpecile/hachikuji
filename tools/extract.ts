@@ -7,7 +7,7 @@
 //   bun tools/extract.ts <fig-repo> <typescript-module-dir> <out-dir> <lost-file>
 //
 // A generator that needs JS (postProcess, custom) is dropped and listed in <lost-file>, unless it
-// maps to a built-in: git branches, remotes, tags, or the filepaths()/folders() helpers.
+// maps to a built-in (BUILTINS, gitBuiltin) or to the filepaths()/folders() helpers.
 
 import { readFileSync, readdirSync, mkdirSync, writeFileSync, existsSync } from "node:fs";
 import { createRequire } from "node:module";
@@ -73,6 +73,9 @@ function lookup(m: Mod, name: string, depth: number): any {
       if (t) v = imp.name === "default" ? (t.def ? evaluate(t.def, t, new Map(), depth + 1) : UNKNOWN) : lookup(t, imp.name, depth + 1);
     }
   }
+  // Name declared generators ("ssh.ts:knownHosts"), so BUILTINS can map them. clean() drops __id.
+  if (d && d !== "function" && v && typeof v === "object" && !Array.isArray(v) && v !== FUNC && !v.__id)
+    v.__id = `${relative(join(repo, "src"), m.file)}:${name}`;
   m.values.set(name, v);
   return v;
 }
@@ -174,9 +177,23 @@ const KEEP = new Set([
   "template", "suggestions", "generators", "type",
 ]);
 
+// Generators that need JS, by declared name, mapped to a built-in of the helper.
+const BUILTINS: Record<string, string> = {
+  "npm.ts:npmScriptsGenerator": "npm-scripts",
+  "make.ts:listTargets": "make-targets",
+  "ssh.ts:knownHosts": "ssh-hosts",
+  "ssh.ts:configHosts": "ssh-hosts",
+};
+
+// Specs built by generateSpec (all JS): a static replacement.
+const OVERRIDES: Record<string, any> = {
+  z: { args: { name: "directory", generators: [{ __template: "folders" }, { builtin: "zoxide" }] } },
+};
+
 function gitBuiltin(script: unknown): string | undefined {
   const s = Array.isArray(script) ? script.join(" ") : typeof script === "string" ? script : "";
   if (!/^git\b/.test(s)) return;
+  if (/\bstatus\b/.test(s)) return "git-changed";
   if (/\bfor-each-ref\b|\bbranch\b/.test(s)) return "git-branches";
   if (/\bremote\b/.test(s)) return "git-remotes";
   if (/\btag\b/.test(s)) return "git-tags";
@@ -186,7 +203,12 @@ const isFunc = (x: any) => x === FUNC;
 
 function generator(g: any, lost: Set<string>): any {
   if (!g || typeof g !== "object" || isFunc(g)) return;
-  if (g.__template) return { template: g.__template };
+  if (g.__template) {
+    const { __template, extensions, equals } = g;
+    return { template: __template, ...(extensions && { extensions }), ...(equals && { equals }) };
+  }
+  if (typeof g.builtin === "string") return { builtin: g.builtin };
+  if (BUILTINS[g.__id]) return { builtin: BUILTINS[g.__id] };
   const out: any = {};
   if (typeof g.template === "string" || Array.isArray(g.template)) out.template = g.template;
   if (isFunc(g.script)) lost.add("generator script function");
@@ -245,6 +267,7 @@ for (const f of files(src).sort()) {
     lostLines.push(`${name}: not static (whole spec)`);
     continue;
   }
+  if (OVERRIDES[name]) Object.assign(spec, OVERRIDES[name]);
   const json = clean(spec, lost);
   mkdirSync(dirname(join(out, name)), { recursive: true });
   writeFileSync(join(out, `${name}.json`), JSON.stringify(json));

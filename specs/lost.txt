@@ -95,11 +95,11 @@ flyctl: generator postProcess
 fnm: generator postProcess
 fvm: generator postProcess
 gem: generator custom
-gh: generator custom, generator postProcess
+gh: alias, generator custom, generator postProcess
 git-cliff: generator postProcess
 git-flow: generator custom
 git-profile: generator postProcess
-git: generateSpec, generator custom, generator postProcess, generator script function
+git: alias, generateSpec, generator custom, generator postProcess, generator script function
 goland: not static (whole spec)
 goto: generator custom
 gource: generator postProcess
@@ -141,7 +141,6 @@ lsof: generator postProcess
 m: generator postProcess
 mackup: generator postProcess
 magento: generateSpec
-make: generator custom
 mamba: generator postProcess, generator script function
 man: generator custom
 mask: generateSpec
@@ -150,7 +149,6 @@ meteor: generator postProcess
 mgnl: generator custom
 mix: generator postProcess
 mkinitcpio: generator postProcess
-mosh: generator custom
 mount: generator postProcess
 multipass: generator postProcess
 n: generator postProcess
@@ -160,9 +158,8 @@ nextflow: generator postProcess
 ng: generator postProcess
 ni: generator custom
 node: generateSpec
-npm: generator custom, generator postProcess
+npm: generator custom
 npx: generator postProcess
-nr: generator postProcess
 nrm: generator custom
 ns: generator postProcess
 nx: generateSpec, generator custom, generator postProcess, generator script function
@@ -204,20 +201,18 @@ react-native: generator postProcess
 redwood: generator postProcess
 rich: generator custom
 robot: generator custom, generator postProcess
-rsync: generator custom, suggestions
+rsync: suggestions
 rubocop: generator postProcess
 rubymine: not static (whole spec)
 rugby: generateSpec, generator postProcess
 rush: generator custom, generator postProcess
-rushx: generator postProcess
+rushx: alias
 rustrover: not static (whole spec)
 rustup: generateSpec, generator postProcess
 sake: generateSpec, generator postProcess
 sam: generator postProcess
 scarb: generator postProcess
-scp: generator custom
 serverless: generateSpec
-sftp: generator custom
 shadcn-ui: generator custom
 shopify/index: not static (whole spec)
 shortcuts: generator postProcess, subcommands
@@ -226,7 +221,6 @@ snaplet: generator postProcess
 softwareupdate: generator postProcess
 spring: generator custom
 ssh-keygen: exclusiveOn
-ssh: generator custom
 st2: generator custom
 stepzen: generator postProcess
 svtplay-dl: generator postProcess
@@ -261,7 +255,7 @@ wifi-password: generator postProcess
 xc: generateSpec
 xcodes: generator postProcess
 yalc: generator postProcess
-yarn: generateSpec, generator custom, generator postProcess, generator script function, loadSpec (not a name)
+yarn: alias, generateSpec, generator custom, generator postProcess, generator script function, loadSpec (not a name)
 ykman: generator custom, generator postProcess
 yo: generator postProcess
 youtube-dl: generator (not static), generator custom, generator postProcess, generator script function

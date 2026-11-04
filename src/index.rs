@@ -52,8 +52,18 @@ pub mod builtin {
     pub const GIT_REMOTES: u32 = 2;
     pub const GIT_TAGS: u32 = 3;
     pub const EXECUTABLES: u32 = 4;
+    pub const GIT_CHANGED: u32 = 5;
+    pub const NPM_SCRIPTS: u32 = 6;
+    pub const MAKE_TARGETS: u32 = 7;
+    pub const SSH_HOSTS: u32 = 8;
+    pub const ZOXIDE: u32 = 9;
     pub fn by_name(s: &str) -> u32 {
         match s {
+            "git-changed" => GIT_CHANGED,
+            "npm-scripts" => NPM_SCRIPTS,
+            "make-targets" => MAKE_TARGETS,
+            "ssh-hosts" => SSH_HOSTS,
+            "zoxide" => ZOXIDE,
             "git-branches" => GIT_BRANCHES,
             "git-remotes" => GIT_REMOTES,
             "git-tags" => GIT_TAGS,

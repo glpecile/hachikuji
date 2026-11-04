@@ -1,5 +1,6 @@
-//! Generators: built-in ones (git refs, PATH executables) and script ones from specs.
-//! Each run has a 200 ms timeout, runs in the request's PWD, and is cached with a short TTL.
+//! Generators: built-in ones (git, npm scripts, make targets, ssh hosts, zoxide, PATH) and script
+//! ones from specs. Each run has a 200 ms timeout, runs in the request's PWD, and is cached with a
+//! short TTL. An item is "name" or "name\tdescription".
 
 use std::collections::HashMap;
 use std::io::Read;
@@ -40,28 +41,32 @@ impl Req {
             Kind::Argv(a) => format!("a{}", a.join("\x1f")),
             Kind::Shell(s) => format!("s{s}"),
         };
-        // PATH executables do not depend on the folder. Git refs also depend on HEAD.
+        // PATH, ssh hosts and zoxide do not depend on the folder. Git refs depend on HEAD, the
+        // changed files on the git index (edits show up one TTL later).
         let place = match kind {
-            Kind::Builtin(builtin::EXECUTABLES) => String::new(),
-            Kind::Builtin(_) => format!("{pwd}\0{:?}", git_head_mtime(Path::new(pwd))),
+            Kind::Builtin(builtin::EXECUTABLES | builtin::SSH_HOSTS | builtin::ZOXIDE) => String::new(),
+            Kind::Builtin(builtin::GIT_CHANGED) => format!("{pwd}\0{:?}", git_mtime(Path::new(pwd), "index")),
+            Kind::Builtin(builtin::GIT_BRANCHES | builtin::GIT_REMOTES | builtin::GIT_TAGS) => {
+                format!("{pwd}\0{:?}", git_mtime(Path::new(pwd), "HEAD"))
+            }
             _ => pwd.to_string(),
         };
         Req { key: format!("{what}\0{split}\0{place}"), kind, split: split.to_string(), pwd: pwd.to_string() }
     }
 }
 
-fn git_head_mtime(dir: &Path) -> Option<SystemTime> {
+fn git_mtime(dir: &Path, file: &str) -> Option<SystemTime> {
     let mut d = Some(dir);
     while let Some(p) = d {
         let dot = p.join(".git");
         if dot.is_dir() {
-            return std::fs::metadata(dot.join("HEAD")).and_then(|m| m.modified()).ok();
+            return std::fs::metadata(dot.join(file)).and_then(|m| m.modified()).ok();
         }
         if dot.is_file() {
             // A worktree: ".git" holds "gitdir: <path>".
             let s = std::fs::read_to_string(&dot).ok()?;
             let g = PathBuf::from(s.trim().strip_prefix("gitdir: ")?);
-            return std::fs::metadata(p.join(g).join("HEAD")).and_then(|m| m.modified()).ok();
+            return std::fs::metadata(p.join(g).join(file)).and_then(|m| m.modified()).ok();
         }
         d = p.parent();
     }
@@ -128,7 +133,29 @@ pub fn run(r: &Req) -> Vec<String> {
         }
         Kind::Builtin(builtin::GIT_REMOTES) => git(&["remote"]),
         Kind::Builtin(builtin::GIT_TAGS) => git(&["tag", "--sort=-creatordate"]),
+        Kind::Builtin(builtin::GIT_CHANGED) => {
+            git(&["status", "--short", "--untracked-files=normal"]).iter().filter_map(|l| changed_path(l)).collect()
+        }
         Kind::Builtin(builtin::EXECUTABLES) => executables(),
+        Kind::Builtin(builtin::NPM_SCRIPTS) => npm_scripts(Path::new(&r.pwd)),
+        Kind::Builtin(builtin::MAKE_TARGETS) => make_targets(Path::new(&r.pwd)),
+        Kind::Builtin(builtin::SSH_HOSTS) => {
+            let home = std::env::var("HOME").unwrap_or_default();
+            let read = |f: &str| std::fs::read_to_string(format!("{home}/.ssh/{f}")).unwrap_or_default();
+            ssh_hosts(&read("config"), &read("known_hosts"))
+        }
+        Kind::Builtin(builtin::ZOXIDE) => {
+            let mut c = Command::new("zoxide");
+            c.args(["query", "--list"]);
+            let home = std::env::var("HOME").unwrap_or_default();
+            lines(output(c, "/"), "\n")
+                .into_iter()
+                .map(|p| match p.strip_prefix(&home) {
+                    Some(rest) if !home.is_empty() && (rest.is_empty() || rest.starts_with('/')) => format!("~{rest}"),
+                    _ => p,
+                })
+                .collect()
+        }
         Kind::Builtin(_) => vec![],
         Kind::Argv(a) if !a.is_empty() => {
             let mut c = Command::new(&a[0]);
@@ -142,6 +169,78 @@ pub fn run(r: &Req) -> Vec<String> {
             lines(output(c, &r.pwd), &r.split)
         }
     }
+}
+
+/// One line of `git status --short`: "XY path", "R  old -> new", or a quoted path. Paths are
+/// relative to the current folder.
+fn changed_path(l: &str) -> Option<String> {
+    let (_, p) = l.trim_start().split_once(' ')?;
+    let p = p.trim_start();
+    let p = p.rsplit_once(" -> ").map_or(p, |x| x.1);
+    // ponytail: a quoted path ("a\tb") keeps its escapes; unescape if such names show up.
+    Some(p.trim_matches('"').to_string()).filter(|p| !p.is_empty())
+}
+
+/// The "scripts" of the nearest package.json, with the command as the description.
+fn npm_scripts(dir: &Path) -> Vec<String> {
+    let Some(text) = dir.ancestors().find_map(|d| std::fs::read_to_string(d.join("package.json")).ok()) else {
+        return vec![];
+    };
+    let v: serde_json::Value = serde_json::from_str(&text).unwrap_or_default();
+    let Some(o) = v.get("scripts").and_then(|s| s.as_object()) else { return vec![] };
+    o.iter().map(|(k, c)| format!("{k}\t{}", c.as_str().unwrap_or("").replace(['\t', '\n'], " "))).take(MAX_ITEMS).collect()
+}
+
+/// Targets of the Makefile in `dir`: "name:" lines, not variables, patterns or special targets.
+/// A "## text" comment after the target is its description.
+fn make_targets(dir: &Path) -> Vec<String> {
+    let Some(text) = ["GNUmakefile", "makefile", "Makefile"].iter().find_map(|f| std::fs::read_to_string(dir.join(f)).ok()) else {
+        return vec![];
+    };
+    let mut v = Vec::new();
+    for l in text.lines() {
+        if l.starts_with(['\t', ' ', '#', '.']) {
+            continue;
+        }
+        let Some((t, rest)) = l.split_once(':') else { continue };
+        if rest.starts_with([':', '=']) || t.contains(['=', '$', '%']) {
+            continue;
+        }
+        let desc = rest.split_once("##").map_or("", |x| x.1.trim());
+        for name in t.split_whitespace() {
+            v.push(if desc.is_empty() { name.to_string() } else { format!("{name}\t{desc}") });
+        }
+    }
+    v.sort();
+    v.dedup();
+    v
+}
+
+/// Hosts from ~/.ssh/config (`Host` lines, no patterns) and ~/.ssh/known_hosts (not hashed).
+/// ponytail: `Include` files are not read.
+fn ssh_hosts(config: &str, known: &str) -> Vec<String> {
+    let mut v: Vec<String> = Vec::new();
+    for l in config.lines() {
+        let l = l.trim();
+        let Some((k, rest)) = l.split_once(|c: char| c.is_whitespace() || c == '=') else { continue };
+        if k.eq_ignore_ascii_case("host") {
+            v.extend(rest.split_whitespace().filter(|h| !h.contains(['*', '?', '!'])).map(String::from));
+        }
+    }
+    for l in known.lines() {
+        let Some(f) = l.split_whitespace().next() else { continue };
+        if f.starts_with(['|', '#', '@']) {
+            continue;
+        }
+        for h in f.split(',') {
+            // [host]:2222 is a host on another port.
+            let h = h.strip_prefix('[').and_then(|x| x.split_once("]:")).map_or(h, |x| x.0);
+            v.push(h.to_string());
+        }
+    }
+    v.sort();
+    v.dedup();
+    v
 }
 
 fn executables() -> Vec<String> {
@@ -214,6 +313,23 @@ mod tests {
         let r = Req::new(Kind::Shell("sleep 5".into()), "\n", "/");
         assert!(run(&r).is_empty());
         assert!(t.elapsed() < Duration::from_secs(1));
+    }
+
+    #[test]
+    fn builtin_parsers() {
+        assert_eq!(changed_path(" M src/a.rs").as_deref(), Some("src/a.rs"));
+        assert_eq!(changed_path("?? new dir/").as_deref(), Some("new dir/"));
+        assert_eq!(changed_path("R  old.rs -> new.rs").as_deref(), Some("new.rs"));
+        assert_eq!(changed_path("MM \"a b\"").as_deref(), Some("a b"));
+        let hosts = ssh_hosts("Host web db\n  HostName x\nHost *.corp !bad\nhost=box\n", "gh.com,1.2.3.4 ssh-ed25519 K\n|1|hash= ssh-rsa K\n[jump]:2222 ssh-rsa K\n");
+        assert_eq!(hosts, ["1.2.3.4", "box", "db", "gh.com", "jump", "web"]);
+        let d = std::env::temp_dir().join(format!("hk-gen-{}", std::process::id()));
+        std::fs::create_dir_all(d.join("sub")).unwrap();
+        std::fs::write(d.join("package.json"), r#"{"scripts":{"build":"tsc","dev":"vite"}}"#).unwrap();
+        assert_eq!(npm_scripts(&d.join("sub")), ["build\ttsc", "dev\tvite"]); // found in a parent folder
+        std::fs::write(d.join("Makefile"), "X := 1\nall: build ## Build it\nbuild test:\n\techo\n.PHONY: all\n%.o: %.c\n$(BIN): x\nY ?= 2\n").unwrap();
+        assert_eq!(make_targets(&d), ["all\tBuild it", "build", "test"]);
+        std::fs::remove_dir_all(&d).unwrap();
     }
 
     #[test]

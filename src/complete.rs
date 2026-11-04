@@ -303,10 +303,18 @@ impl<'a> Walk<'a> {
                         continue;
                     }
                 };
-                // Built-in git refs before files: Fig set this in the JS postProcess we drop.
+                // Built-in results before files: Fig set this in the JS postProcess we drop.
                 let prio = if c.builtin() != 0 { 75 } else { c.priority };
-                for it in items.iter() {
-                    self.push(it, "", Kind::Arg, prio, it, " ", false);
+                let k = match c.builtin() {
+                    builtin::GIT_CHANGED => Kind::File,
+                    builtin::ZOXIDE => Kind::Folder,
+                    _ => Kind::Arg,
+                };
+                for (i, it) in items.iter().enumerate() {
+                    let (name, desc) = it.split_once('\t').unwrap_or((it, ""));
+                    // zoxide lists the most used folders first: keep that order.
+                    let p = if k == Kind::Folder { prio + (items.len() - i) as i32 } else { prio };
+                    self.push(name, desc, k, p, name, " ", false);
                 }
             }
         }
