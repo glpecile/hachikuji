@@ -252,6 +252,27 @@ T send-keys 'hi'
 waitfor "❯ git commit -m 'hi'"
 has "❯ git commit -m 'hi'"; check 'cursor goes between the quotes of -m' $?
 
+# 20. Shift-Tab moves the selection up
+start
+T send-keys 'git '
+waitfor "$top*status"
+T send-keys Down Down BTab
+sleep 0.3
+[[ "$(esc | grep -aF $'\e[7m')" == *add* ]]; check 'Shift-Tab moves the selection up' $?
+
+# 21. open = "tab": no popup while typing; Tab opens it; then it follows typing
+mkdir -p $work/cfg/hachikuji
+print -r -- 'open = "tab"' > $work/cfg/hachikuji/config.toml
+start 90 24 "export XDG_CONFIG_HOME=$work/cfg"
+T send-keys 'git ch'
+sleep 0.6
+has $top; r1=$?
+T send-keys Tab
+waitfor "$top*checkout"; r2=$?
+T send-keys 'e'
+waitfor "❯ git che*$top*checkout"; r3=$?
+(( r1 == 1 && r2 == 0 && r3 == 0 )); check "open = \"tab\": popup only after Tab ($r1 $r2 $r3)" $?
+
 T kill-server 2>/dev/null || true
 print -r -- "$fails failed"
 (( fails == 0 ))

@@ -12,13 +12,15 @@ autoload -Uz add-zle-hook-widget add-zsh-hook
 typeset -g _hk_bin=${HACHIKUJI_BIN:-$commands[hachikuji]} _hk_src=${${(%):-%x}:A}
 typeset -g _hk_key= _hk_popup= _hk_text= _hk_insert= _hk_rbuf= _hk_main=emacs
 typeset -gi _hk_open=0 _hk_sel=0 _hk_moved=0 _hk_count=0 _hk_replace=0 _hk_dismissed=0
+# open = "tab" in config.toml: the popup opens on Tab only, then follows typing until it closes.
+typeset -gi _hk_tab=0 _hk_armed=0
 typeset -gi _hk_seq=0 _hk_inflight=0 _hk_pending=0 _hk_wfd=-1 _hk_rfd=-1 _hk_pid=0 _hk_started=-100
 typeset -gF _hk_sent=0
 typeset -ga _hk_hl
 # Keys in the notation of `bindkey` and ${(V)KEYS}.
 typeset -gA _hk_prev _hk_role=(
   '^I' tab  '^M' enter  '^[' esc
-  '^[[A' up  '^[OA' up  '^P' up
+  '^[[A' up  '^[OA' up  '^P' up  '^[[Z' up
   '^[[B' down  '^[OB' down  '^N' down
 )
 
@@ -125,16 +127,18 @@ _hk_pre_redraw() {
   if [[ $key != "$_hk_key" ]]; then
     _hk_key=$key _hk_sel=0 _hk_moved=0 _hk_dismissed=0
     # No popup on history recall (Up must keep walking history), in vi command mode, or for huge lines.
-    if [[ -n $BUFFER && $KEYMAP != vicmd && $LASTWIDGET != *(history|search)* ]] && (( $#BUFFER <= 8192 )); then
+    if [[ -n $BUFFER && $KEYMAP != vicmd && $LASTWIDGET != *(history|search)* ]] && (( $#BUFFER <= 8192 )) &&
+      (( ! _hk_tab || _hk_armed )); then
       _hk_request
     else
       _hk_open=0
+      [[ -z $BUFFER ]] && _hk_armed=0
     fi
   fi
   _hk_draw
 }
 
-_hk_finish() { _hk_open=0 _hk_key=; _hk_draw }
+_hk_finish() { _hk_open=0 _hk_armed=0 _hk_key=; _hk_draw }
 
 _hk_accept() {
   _hk_sync
@@ -152,15 +156,20 @@ _hk_accept() {
 
 # --- keys ----------------------------------------------------------------------------------
 
-# Tab, Enter, Esc, Up, Down, ^N, ^P. With the popup closed, run the widget the key had before.
+# Tab, Enter, Esc, Up, Down, ^N, ^P, Shift-Tab. With the popup closed, run the widget the key had before.
 hachikuji-key() {
   local k=${${(V)KEYS}/#%\\t/^I}  # (V) shows Tab as \t, bindkey as ^I
+  # open = "tab": the first Tab opens the popup. A Tab with nothing to show runs zsh completion.
+  if (( _hk_tab && ! _hk_armed && ! _hk_open )) && [[ $_hk_role[$k] == tab && -n $BUFFER ]]; then
+    _hk_armed=1 _hk_key=
+    return
+  fi
   if (( _hk_open && _hk_count )); then
     case $_hk_role[$k] in
       up)    (( _hk_sel = (_hk_sel + _hk_count - 1) % _hk_count, _hk_moved = 1 )); _hk_request; return ;;
       down)  (( _hk_sel = (_hk_sel + 1) % _hk_count, _hk_moved = 1 )); _hk_request; return ;;
       tab)   _hk_accept && return ;;
-      esc)   _hk_open=0 _hk_dismissed=1; _hk_draw; return ;;
+      esc)   _hk_open=0 _hk_dismissed=1 _hk_armed=0; _hk_draw; return ;;
       enter) (( _hk_moved )) && _hk_accept && return
              _hk_open=0 _hk_dismissed=1; _hk_draw ;;
     esac
@@ -180,7 +189,7 @@ hachikuji-pass() { _hk_open=0; _hk_draw; zle ${WIDGET##*hachikuji-pass-} }
 # calls zle -R, which does not run line-pre-redraw. Put the popup back after it.
 hachikuji-suggest() { zle hachikuji-orig-suggest -- "$@"; _hk_draw; zle -R }
 
-hachikuji-INT()   { _hk_open=0 _hk_key=; _hk_draw; zle -R }
+hachikuji-INT()   { _hk_open=0 _hk_armed=0 _hk_key=; _hk_draw; zle -R }
 hachikuji-WINCH() { _hk_request; _hk_draw; zle -R }
 
 _hk_on_signal() {
@@ -221,6 +230,11 @@ _hk_setup() {
   done
   bindkey -lL main >| $f
   _hk_main=${${(z)"$(<$f)"}[3]}
+  # The `open` key of config.toml (the helper reads the other keys).
+  local cfg=${XDG_CONFIG_HOME:-$HOME/.config}/hachikuji/config.toml
+  [[ -r $cfg ]] && for line in ${(f)"$(<$cfg)"}; do
+    [[ ${line//[[:space:]]/} == open=\"tab\"* ]] && _hk_tab=1
+  done
   trap >| $f
   local traps="$(<$f)"
   zf_rm -f $f 2>/dev/null || command rm -f $f

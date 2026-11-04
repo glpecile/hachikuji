@@ -42,7 +42,7 @@ The helper starts on the first key, not in `.zshrc`.
 
 | Key | Popup open | Popup closed |
 |---|---|---|
-| Up, Down, Ctrl-P, Ctrl-N | Move the selection | The key's own widget (history) |
+| Up, Down, Ctrl-P, Ctrl-N, Shift-Tab | Move the selection | The key's own widget (history) |
 | Tab | Insert the selected item | The key's own widget (zsh completion) |
 | Enter | Insert the item if you moved the selection; else run the line | Run the line |
 | Esc | Close the popup (after `KEYTIMEOUT`, 0.4 s by default) | The key's own widget (vi command mode) |
@@ -60,6 +60,7 @@ border = "rounded"        # rounded | square | none
 nerd_font = true          # icons; false colors the name by kind instead
 descriptions = true
 selected = "reverse"      # "reverse", or a palette index from 0 to 15 (the row background)
+open = "auto"             # "auto": opens as you type; "tab": opens on Tab, then follows typing until it closes
 fuzzy = true              # "chk" finds checkout, but only when no name starts with what you typed
 ```
 
