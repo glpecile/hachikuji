@@ -1,0 +1,486 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>hachikuji</title>
+<meta name="description" content="An IDE-style completion popup for zsh that uses almost no memory. No pty wrapper, about 2 MB per shell.">
+<meta property="og:title" content="hachikuji">
+<meta property="og:description" content="An IDE-style completion popup for zsh that uses almost no memory.">
+<meta property="og:image" content="https://raw.githubusercontent.com/glpecile/hachikuji/main/docs/demo.gif">
+<link rel="icon" href="snail.svg" type="image/svg+xml">
+<style>
+*, *::before, *::after { box-sizing: border-box; min-width: 0; }
+
+:root {
+  color-scheme: light dark;
+  --bg: light-dark(oklch(1 0 none), oklch(0.16 0 none));
+  --fg: light-dark(oklch(0.2 0 none), oklch(0.96 0 none));
+  --muted: light-dark(oklch(0.48 0 none), oklch(0.7 0 none));
+  --line: light-dark(oklch(0.92 0 none), oklch(0.27 0 none));
+  --soft: light-dark(oklch(0.97 0 none), oklch(0.2 0 none));
+  --accent: oklch(0.72 0.12 60);
+
+  /* The demo terminal is dark in both themes. */
+  --t-bg: oklch(0.21 0.02 280);
+  --t-fg: oklch(0.9 0.02 280);
+  --t-dim: oklch(0.6 0.03 280);
+  --t-line: oklch(0.36 0.03 280);
+  --t-sel: oklch(0.84 0.05 280);
+  --t-green: oklch(0.82 0.12 145);
+  --t-blue: oklch(0.75 0.11 255);
+  --t-pink: oklch(0.8 0.1 340);
+  --t-cyan: oklch(0.82 0.09 195);
+
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --mono: ui-monospace, "Geist Mono", "SF Mono", Menlo, Consolas, monospace;
+  --text-h1: clamp(1.75rem, 1.5rem + 1vw, 2.25rem);
+
+  scrollbar-gutter: stable;
+  text-wrap: pretty;
+  overflow-wrap: break-word;
+  font-synthesis: none;
+  -webkit-font-smoothing: antialiased;
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  margin: 0;
+  min-height: 100svh;
+  background: var(--bg);
+  color: var(--fg);
+  font: 400 1rem/1.6 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+h1, h2 { text-wrap: balance; }
+img, svg { display: block; max-width: 100%; height: auto; }
+input { font-size: max(16px, 1rem); }
+button, a { touch-action: manipulation; }
+button { user-select: none; -webkit-user-select: none; font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+main {
+  --gutter: 1rem;
+  --content: 40rem;
+  --breakout: 46rem;
+  display: grid;
+  grid-template-columns:
+    [full-width-start] minmax(var(--gutter), 1fr)
+    [breakout-start] minmax(0, calc((var(--breakout) - var(--content)) / 2))
+    [content-start] min(100% - var(--gutter) * 2, var(--content)) [content-end]
+    minmax(0, calc((var(--breakout) - var(--content)) / 2)) [breakout-end]
+    minmax(var(--gutter), 1fr) [full-width-end];
+  padding-block: clamp(3rem, 2rem + 4vw, 6rem) 4rem;
+}
+main > * { grid-column: content; }
+main > .breakout { grid-column: breakout; }
+
+/* --- hero ------------------------------------------------------------------------------ */
+
+.hero { display: grid; justify-items: start; gap: 1rem; margin-block-end: 2.5rem; }
+.hero img { inline-size: 64px; flex: none; }
+h1 { font-size: var(--text-h1); font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; margin: 0; }
+.hero p { margin: 0; color: var(--muted); font-size: 1.0625rem; max-inline-size: 32rem; }
+.actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-block-start: 0.5rem; }
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  block-size: 2.5rem;
+  padding-inline: 1rem;
+  border-radius: 0.625rem;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--fg);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+}
+.button.primary { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.button:active { transform: scale(0.97); }
+@media (hover: hover) and (pointer: fine) {
+  .button:hover { background: var(--soft); }
+  .button.primary:hover { background: color-mix(in oklch, var(--fg), var(--bg) 15%); }
+}
+
+/* --- demo ------------------------------------------------------------------------------ */
+
+.term {
+  background: var(--t-bg);
+  color: var(--t-fg);
+  border-radius: 0.875rem;
+  border: 1px solid color-mix(in oklch, var(--t-line), transparent 40%);
+  padding: 1.125rem 1.25rem 1.25rem;
+  font: 400 0.9375rem/1.55 var(--mono);
+  min-block-size: 15.5rem;
+  overflow: clip;
+  box-shadow: 0 1px 2px oklch(0 0 none / 0.06), 0 12px 32px -12px oklch(0 0 none / 0.25);
+}
+.history { margin: 0; padding: 0; list-style: none; }
+.history li { color: var(--t-dim); white-space: pre; overflow: clip; text-overflow: ellipsis; }
+.prompt-line { display: flex; align-items: baseline; gap: 0.75ch; }
+.prompt { color: var(--t-blue); flex: none; }
+.prompt b { color: var(--t-pink); font-weight: 400; }
+.prompt-line input {
+  flex: 1;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  color: var(--t-fg);
+  font: inherit;
+  caret-color: var(--t-pink);
+}
+.prompt-line input:focus-visible { outline: none; }
+.term:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+/* The popup: no animation, like the real one. It opens on every key. */
+.popup {
+  display: none;
+  margin: 0.5rem 0 0;
+  padding: 0.25rem 0.375rem;
+  list-style: none;
+  inline-size: fit-content;
+  max-inline-size: 100%;
+  border: 1px solid var(--t-line);
+  border-radius: 0.5rem;
+  position: relative;
+}
+.popup.open { display: block; }
+.popup li {
+  display: grid;
+  grid-template-columns: 1.25ch auto 1fr;
+  gap: 1ch;
+  padding-inline: 0.5ch 1ch;
+  border-radius: 0.25rem;
+  white-space: pre;
+  cursor: pointer;
+}
+.popup li > span:last-child { color: var(--t-fg); overflow: clip; text-overflow: ellipsis; padding-inline-start: 1ch; }
+.popup li[aria-selected="true"] { background: var(--t-sel); color: var(--t-bg); }
+.popup li[aria-selected="true"] > span { color: inherit !important; }
+.k-cmd { color: var(--t-green); } .k-sub { color: var(--t-blue); } .k-opt { color: var(--t-pink); }
+.k-folder { color: var(--t-cyan); } .k-file, .k-arg { color: var(--t-dim); }
+.count {
+  position: absolute;
+  inset-block-end: -0.8em;
+  inset-inline-start: 1ch;
+  padding-inline: 0.5ch;
+  background: var(--t-bg);
+  color: var(--t-dim);
+  font-size: 0.8125rem;
+}
+
+.chips { display: flex; flex-wrap: wrap; gap: 0.375rem; margin-block: 1rem 0.5rem; }
+.chip {
+  border: 1px solid var(--line);
+  background: var(--bg);
+  border-radius: 999px;
+  padding: 0.25rem 0.75rem;
+  font: 400 0.8125rem/1.5 var(--mono);
+  cursor: pointer;
+}
+.chip:active { transform: scale(0.97); }
+@media (hover: hover) and (pointer: fine) { .chip:hover { background: var(--soft); } }
+.hint { color: var(--muted); font-size: 0.875rem; margin: 0; }
+kbd { font: 500 0.8125rem var(--mono); padding: 0 0.3em; border: 1px solid var(--line); border-radius: 0.3rem; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .button, .chip, .copy { transition: transform 160ms var(--ease-out); }
+}
+
+/* --- sections -------------------------------------------------------------------------- */
+
+section { margin-block-start: 3.5rem; }
+h2 { font-size: 1rem; font-weight: 600; margin: 0 0 0.75rem; }
+section > p { margin: 0 0 0.75rem; color: var(--muted); }
+section > p code, li code { font: 0.875em var(--mono); color: var(--fg); }
+
+.code {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding-inline-end: 0.5rem;
+  margin: 0 0 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: 0.625rem;
+  background: var(--soft);
+}
+.code pre {
+  flex: 1;
+  margin: 0;
+  padding: 0.875rem 1rem;
+  overflow-x: auto;
+  font: 400 0.875rem/1.6 var(--mono);
+}
+.copy {
+  flex: none;
+  margin-block-start: 0.625rem;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  border-radius: 0.4rem;
+  padding: 0.125rem 0.5rem;
+  font-size: 0.75rem;
+  cursor: pointer;
+}
+.copy:active { transform: scale(0.97); }
+
+.keys { display: grid; grid-template-columns: max-content 1fr; gap: 0.5rem 1.25rem; margin: 0; }
+.keys dt { font: 0.875rem var(--mono); }
+.keys dd { margin: 0; color: var(--muted); }
+
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: 0.75rem; }
+.stat { border: 1px solid var(--line); border-radius: 0.75rem; padding: 0.875rem 1rem; }
+.stat strong { display: block; font-size: 1.375rem; font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.stat span { color: var(--muted); font-size: 0.875rem; }
+
+footer { margin-block-start: 4rem; padding-block-start: 1.5rem; border-block-start: 1px solid var(--line); color: var(--muted); font-size: 0.875rem; }
+footer a, section a { color: inherit; text-underline-offset: 0.2em; }
+</style>
+</head>
+<body>
+<main>
+  <header class="hero">
+    <img src="snail.svg" width="64" height="43" alt="">
+    <h1>hachikuji</h1>
+    <p>An IDE-style completion popup for zsh. It draws with the zsh line editor, so zsh stays in charge of your terminal, and it uses about 2 MB per shell.</p>
+    <div class="actions">
+      <a class="button primary" href="#install">Get started</a>
+      <a class="button" href="https://github.com/glpecile/hachikuji">GitHub</a>
+    </div>
+  </header>
+
+  <div class="breakout">
+    <div class="term" id="term">
+      <ul class="history" id="history" aria-label="Commands you ran"></ul>
+      <div class="prompt-line">
+        <span class="prompt">~/project <b>❯</b></span>
+        <input id="line" type="text" spellcheck="false" autocomplete="off" autocapitalize="off"
+          role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="popup"
+          aria-label="Type a command">
+      </div>
+      <ul class="popup" id="popup" role="listbox" aria-label="Suggestions"></ul>
+    </div>
+  </div>
+  <div class="chips" aria-label="Try a command">
+    <button class="chip" data-try="git ch">git ch</button>
+    <button class="chip" data-try="cd ">cd</button>
+    <button class="chip" data-try="make ">make</button>
+    <button class="chip" data-try="npm run ">npm run</button>
+    <button class="chip" data-try="docker run --r">docker run --r</button>
+  </div>
+  <p class="hint">Type in the terminal. <kbd>↑</kbd> <kbd>↓</kbd> move, <kbd>Tab</kbd> inserts, <kbd>Esc</kbd> closes, <kbd>Enter</kbd> runs.</p>
+
+  <section id="install">
+    <h2>Install</h2>
+    <p>From source, until the first release is out (needs <code>rustup</code>, <code>bun</code> and <code>git</code>):</p>
+    <div class="code"><pre><code>git clone https://github.com/glpecile/hachikuji
+cd hachikuji &amp;&amp; make install</code></pre><button class="copy" type="button">Copy</button></div>
+    <p>After the first release, one line, or Homebrew:</p>
+    <div class="code"><pre><code>curl -fsSL https://github.com/glpecile/hachikuji/releases/latest/download/install.sh | sh</code></pre><button class="copy" type="button">Copy</button></div>
+    <div class="code"><pre><code>brew install glpecile/tap/hachikuji</code></pre><button class="copy" type="button">Copy</button></div>
+    <p>Then add the line it prints to <code>~/.zshrc</code>, before zsh-syntax-highlighting. Moving from Fig, Kiro CLI or inshellisense? <a href="https://github.com/glpecile/hachikuji/blob/main/docs/MIGRATION.md">Follow the migration guide</a>.</p>
+  </section>
+
+  <section>
+    <h2>Keys</h2>
+    <dl class="keys">
+      <dt>↑ ↓ ⇧Tab</dt><dd>Move the selection. With the popup closed, Up and Down walk history.</dd>
+      <dt>Tab</dt><dd>Insert the item, then open the popup for the next word. With no popup, two Tabs run zsh completion.</dd>
+      <dt>Enter</dt><dd>Run the line. After you move the selection, insert the item.</dd>
+      <dt>Esc</dt><dd>Close the popup.</dd>
+    </dl>
+  </section>
+
+  <section>
+    <h2>Configure</h2>
+    <p>Every key is optional, in <code>~/.config/hachikuji/config.toml</code>:</p>
+    <div class="code"><pre><code>max_rows = 8
+border = "rounded"   # rounded | square | none
+selected = "reverse" # or a palette index from 0 to 15
+open = "auto"        # "tab": open only when you press Tab
+fuzzy = true</code></pre><button class="copy" type="button">Copy</button></div>
+    <p>The popup uses only your terminal's 16 colors, so it follows your theme, light or dark.</p>
+  </section>
+
+  <section>
+    <h2>Small and fast</h2>
+    <div class="stats">
+      <div class="stat"><strong>2.2 MB</strong><span>per shell. inshellisense: 43 MB</span></div>
+      <div class="stat"><strong>11.6 ms</strong><span>key press to popup, p99</span></div>
+      <div class="stat"><strong>1,455</strong><span>Fig specs, in one shared index</span></div>
+    </div>
+  </section>
+
+  <footer>
+    <a href="https://github.com/glpecile/hachikuji">GitHub</a> · Specs from <a href="https://github.com/withfig/autocomplete">withfig/autocomplete</a> (MIT)
+  </footer>
+</main>
+
+<script>
+// A small model of the real popup: the same keys, matching and insert rules, with a fixed spec.
+const item = (name, desc = '', kind = 'arg') => ({ name, desc, kind });
+const sub = (name, desc) => item(name, desc, 'sub');
+const opt = (name, desc) => item(name, desc, 'opt');
+const branches = ['main', 'feat/popup', 'fix/tab-race'].map((b) => item(b));
+
+const COMMANDS = [
+  item('cd', 'Change the working folder', 'cmd'),
+  item('docker', 'Run and manage containers', 'cmd'),
+  item('git', 'The version control system', 'cmd'),
+  item('make', 'Build targets from a Makefile', 'cmd'),
+  item('npm', 'The Node package manager', 'cmd'),
+];
+const ARGS = {
+  git: [sub('add', 'Add file contents to the index'), sub('branch', 'List, create, or delete branches'),
+    sub('checkout', 'Switch branches or restore files'), sub('cherry-pick', 'Apply the changes of some commits'),
+    sub('clone', 'Clone a repository into a new folder'), sub('commit', 'Record changes to the repository'),
+    sub('diff', 'Show changes between commits'), sub('log', 'Show commit logs'), sub('pull', 'Fetch and merge from a remote'),
+    sub('push', 'Update remote refs'), sub('status', 'Show the working tree status'), sub('switch', 'Switch branches')],
+  'git checkout': branches,
+  'git switch': branches,
+  'git add': ['README.md', 'shell/hachikuji.zsh', 'src/complete.rs'].map((f) => item(f, '', 'file')),
+  'git push': [item('origin')],
+  make: ['all', 'bench', 'clean', 'install', 'test'].map((t) => item(t)),
+  npm: [sub('install', 'Install a package'), sub('run', 'Run a script from package.json'), sub('test', 'Run the test script')],
+  'npm run': [item('build', 'tsc && vite build'), item('dev', 'vite'), item('lint', 'eslint .'), item('test', 'vitest')],
+  docker: [sub('build', 'Build an image'), sub('images', 'List images'), sub('ps', 'List containers'), sub('run', 'Run a command in a new container')],
+};
+const OPTIONS = {
+  'git commit': [opt('--all', 'Stage changed files first'), opt('--amend', 'Replace the last commit'), opt('-m', 'Use the given message')],
+  'git checkout': [opt('-b', 'Create and switch to a new branch')],
+  'docker run': [opt('--name', 'Name the container'), opt('--read-only', 'Mount the root filesystem read only'),
+    opt('--restart', 'Restart policy when it exits'), opt('--rm', 'Remove the container when it exits'), opt('-d', 'Run in the background')],
+};
+const FOLDERS = ['docs/', 'docs/demo/', 'shell/', 'site/', 'src/', 'tests/', 'tools/'];
+
+// Prefix first; a subsequence ("chk" → checkout) only when nothing starts with the word.
+function match(items, cur) {
+  const pre = items.filter((x) => x.name.startsWith(cur));
+  if (pre.length || cur.startsWith('-')) return pre;
+  const sub = (n) => { let i = 0; for (const c of n) if (c === cur[i]) i++; return i === cur.length; };
+  return items.filter((x) => sub(x.name));
+}
+
+function suggest(before) {
+  const words = before.split(' ');
+  const cur = words.pop();
+  const ctx = words.filter(Boolean);
+  if (!ctx.length) return cur ? match(COMMANDS, cur) : [];
+  if (ctx[0] === 'cd') {
+    const dir = cur.slice(0, cur.lastIndexOf('/') + 1);
+    const parent = (p) => p.slice(0, p.slice(0, -1).lastIndexOf('/') + 1);
+    return match(FOLDERS.filter((p) => parent(p) === dir).map((p) => ({ ...item(p, '', 'folder'), label: p.slice(dir.length) })), cur);
+  }
+  const key = ctx.filter((w) => !w.startsWith('-')).join(' ');
+  const opts = (OPTIONS[key] || []).filter((o) => !ctx.includes(o.name)); // a used option is hidden
+  if (cur.startsWith('-')) return match(opts, cur);
+  const args = ARGS[key] || [];
+  return args.length || cur ? match(args, cur) : opts;
+}
+
+const ICON = { cmd: '❯', sub: '→', opt: '−', folder: '▸', file: '·', arg: '•' };
+const MAX_ROWS = 6;
+const input = document.getElementById('line');
+const popup = document.getElementById('popup');
+const history = document.getElementById('history');
+let items = [], sel = 0, moved = false, open = false;
+
+function render() {
+  popup.replaceChildren();
+  popup.classList.toggle('open', open);
+  input.setAttribute('aria-expanded', String(open));
+  input.removeAttribute('aria-activedescendant');
+  if (!open) return;
+  const first = Math.min(Math.max(0, sel - MAX_ROWS + 1), Math.max(0, items.length - MAX_ROWS));
+  items.slice(first, first + MAX_ROWS).forEach((x, i) => {
+    const li = document.createElement('li');
+    li.id = `opt-${first + i}`;
+    li.role = 'option';
+    li.setAttribute('aria-selected', String(first + i === sel));
+    const icon = Object.assign(document.createElement('span'), { className: `k-${x.kind}`, textContent: ICON[x.kind] });
+    icon.setAttribute('aria-hidden', 'true');
+    li.append(icon, Object.assign(document.createElement('span'), { textContent: x.label || x.name }),
+      Object.assign(document.createElement('span'), { textContent: x.desc }));
+    li.addEventListener('pointerdown', (e) => { e.preventDefault(); sel = first + i; accept(); });
+    popup.append(li);
+  });
+  if (items.length > MAX_ROWS) popup.append(Object.assign(document.createElement('div'), { className: 'count', textContent: ` ${sel + 1}/${items.length} ` }));
+  input.setAttribute('aria-activedescendant', `opt-${sel}`);
+}
+
+function update() {
+  items = suggest(input.value.slice(0, input.selectionStart ?? input.value.length));
+  sel = 0; moved = false; open = items.length > 0;
+  render();
+}
+
+function accept() {
+  const x = items[sel];
+  const end = input.selectionStart ?? input.value.length;
+  const before = input.value.slice(0, end);
+  const start = before.lastIndexOf(' ') + 1;
+  const text = x.name + (x.kind === 'folder' ? '' : ' ');
+  input.value = before.slice(0, start) + text + input.value.slice(end);
+  input.setSelectionRange(start + text.length, start + text.length);
+  update(); // the popup for the next word opens at once
+}
+
+function run() {
+  const li = document.createElement('li');
+  li.textContent = `❯ ${input.value}`;
+  history.append(li);
+  while (history.children.length > 3) history.firstElementChild.remove();
+  input.value = '';
+  update();
+}
+
+input.addEventListener('input', update);
+input.addEventListener('keydown', (e) => {
+  if (open && (e.key === 'ArrowDown' || e.key === 'ArrowUp' || (e.key === 'Tab' && e.shiftKey))) {
+    e.preventDefault();
+    const step = e.key === 'ArrowDown' ? 1 : -1;
+    sel = (sel + step + items.length) % items.length;
+    moved = true;
+    render();
+  } else if (open && e.key === 'Tab') {
+    e.preventDefault();
+    accept();
+  } else if (e.key === 'Escape' && open) {
+    open = false;
+    render();
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    if (open && moved) accept(); else run();
+  }
+});
+input.addEventListener('blur', () => { open = false; render(); });
+input.addEventListener('focus', update);
+
+document.querySelectorAll('[data-try]').forEach((b) => b.addEventListener('click', () => {
+  input.value = b.dataset.try;
+  input.focus();
+  input.setSelectionRange(input.value.length, input.value.length);
+  update();
+}));
+
+document.querySelectorAll('.copy').forEach((b) => b.addEventListener('click', async () => {
+  try {
+    await navigator.clipboard.writeText(b.previousElementSibling.textContent);
+    b.textContent = 'Copied';
+  } catch {
+    b.textContent = 'Select and copy';
+  }
+  setTimeout(() => { b.textContent = 'Copy'; }, 1500);
+}));
+
+// Show the popup at once on load, as if someone just typed `git ch`.
+input.value = 'git ch';
+items = suggest(input.value); open = true; render();
+</script>
+</body>
+</html>
