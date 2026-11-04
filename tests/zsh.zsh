@@ -320,6 +320,16 @@ sleep 1.5
 ! kill -0 $hp 2>/dev/null; check 'helper exits with the shell while a child process runs' $?
 pkill -f 'sleep 314159' 2>/dev/null
 
+# 26. a key bound to autosuggest-accept never puts the popup rows into the line
+start 90 24 "bindkey '^ ' autosuggest-accept"
+T send-keys 'git st'
+waitfor "$top*status"
+T send-keys C-Space
+sleep 0.3
+T send-keys Enter
+sleep 0.6
+! has 'not found' && ! has 'no such'; check 'autosuggest-accept with the popup open runs only the line' $?
+
 T kill-server 2>/dev/null || true
 print -r -- "$fails failed"
 (( fails == 0 ))

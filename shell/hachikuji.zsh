@@ -214,8 +214,8 @@ hachikuji-key() {
   [[ $w == *(history|search)* ]] && _hk_key="$CURSOR:$KEYMAP:$BUFFER" _hk_open=0
 }
 
-# Widgets that zsh-autosuggestions uses to accept the ghost text (BUFFER+=POSTDISPLAY).
-# Remove the popup first, so it never gets into the buffer.
+# Widgets that zsh-autosuggestions uses to accept the ghost text (BUFFER+=POSTDISPLAY), and its
+# own accept and execute widgets. Remove the popup first, so it never gets into the buffer.
 hachikuji-pass() { _hk_open=0; _hk_draw; zle ${WIDGET##*hachikuji-pass-} }
 
 # In async mode (the default), autosuggest-suggest sets POSTDISPLAY from a zle -F handler and
@@ -243,7 +243,11 @@ _hk_setup() {
   local f=${TMPDIR:-/tmp}/hachikuji-keys.$$ km k w line
   local -a pass=( forward-char end-of-line vi-forward-char vi-end-of-line vi-add-eol
     forward-word emacs-forward-word vi-forward-word vi-forward-word-end vi-forward-blank-word
-    vi-forward-blank-word-end vi-find-next-char vi-find-next-char-skip )
+    vi-forward-blank-word-end vi-find-next-char vi-find-next-char-skip
+    autosuggest-accept autosuggest-execute autosuggest-partial-accept
+    $ZSH_AUTOSUGGEST_ACCEPT_WIDGETS $ZSH_AUTOSUGGEST_EXECUTE_WIDGETS $ZSH_AUTOSUGGEST_PARTIAL_ACCEPT_WIDGETS )
+  pass=( ${(u)pass} )
+  for w in $pass; do zle -N hachikuji-pass-$w hachikuji-pass; done
   # `bindkey > file` and $(<file) run without a fork, unlike $(bindkey).
   for km in emacs viins; do
     bindkey -M $km >| $f 2>/dev/null || return
@@ -294,11 +298,6 @@ _hk_setup() {
   local w
   zle -N hachikuji-key; zle -N hachikuji-pass; zle -N hachikuji-recv; zle -N hachikuji-suggest
   zle -N hachikuji-INT; zle -N hachikuji-WINCH
-  for w in forward-char end-of-line vi-forward-char vi-end-of-line vi-add-eol forward-word \
-    emacs-forward-word vi-forward-word vi-forward-word-end vi-forward-blank-word \
-    vi-forward-blank-word-end vi-find-next-char vi-find-next-char-skip; do
-    zle -N hachikuji-pass-$w hachikuji-pass
-  done
   (( ${+ZSH_AUTOSUGGEST_IGNORE_WIDGETS} )) && ZSH_AUTOSUGGEST_IGNORE_WIDGETS+=('hachikuji-*')
   add-zle-hook-widget line-pre-redraw _hk_pre_redraw
   add-zle-hook-widget line-finish _hk_finish
