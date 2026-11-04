@@ -192,6 +192,7 @@ fn npm_scripts(dir: &Path) -> Vec<String> {
 }
 
 /// Targets of the Makefile in `dir`: "name:" lines, not variables, patterns or special targets.
+/// A target with a `/` is a file the Makefile builds (build/specs.idx), not one to type: skip it.
 /// A "## text" comment after the target is its description.
 fn make_targets(dir: &Path) -> Vec<String> {
     let Some(text) = ["GNUmakefile", "makefile", "Makefile"].iter().find_map(|f| std::fs::read_to_string(dir.join(f)).ok()) else {
@@ -207,7 +208,7 @@ fn make_targets(dir: &Path) -> Vec<String> {
             continue;
         }
         let desc = rest.split_once("##").map_or("", |x| x.1.trim());
-        for name in t.split_whitespace() {
+        for name in t.split_whitespace().filter(|n| !n.contains('/')) {
             v.push(if desc.is_empty() { name.to_string() } else { format!("{name}\t{desc}") });
         }
     }
@@ -327,7 +328,7 @@ mod tests {
         std::fs::create_dir_all(d.join("sub")).unwrap();
         std::fs::write(d.join("package.json"), r#"{"scripts":{"build":"tsc","dev":"vite"}}"#).unwrap();
         assert_eq!(npm_scripts(&d.join("sub")), ["build\ttsc", "dev\tvite"]); // found in a parent folder
-        std::fs::write(d.join("Makefile"), "X := 1\nall: build ## Build it\nbuild test:\n\techo\n.PHONY: all\n%.o: %.c\n$(BIN): x\nY ?= 2\n").unwrap();
+        std::fs::write(d.join("Makefile"), "X := 1\nall: build ## Build it\nbuild test:\n\techo\n.PHONY: all\n%.o: %.c\n$(BIN): x\nY ?= 2\nout/a.idx: x\n").unwrap();
         assert_eq!(make_targets(&d), ["all\tBuild it", "build", "test"]);
         std::fs::remove_dir_all(&d).unwrap();
     }
