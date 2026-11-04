@@ -1,8 +1,16 @@
-# hachikuji
+<p align="center"><img src="docs/snail.svg" width="160" alt="A small smiling snail"></p>
 
-<p align="center"><img src="docs/snail.svg" width="200" alt="A small smiling snail"></p>
+<h1 align="center">hachikuji</h1>
 
-An IDE-style completion popup for zsh, in the style of Fig and inshellisense, that uses almost no memory.
+<p align="center">An IDE-style completion popup for zsh that uses almost no memory.</p>
+
+<p align="center">
+  <a href="https://glpecile.github.io/hachikuji">Website</a> ·
+  <a href="#install">Install</a> ·
+  <a href="docs/MIGRATION.md">Move from Fig, Kiro CLI or inshellisense</a>
+</p>
+
+<p align="center"><img src="docs/demo.gif" width="900" alt="Typing git, cd, make and docker commands in zsh. A popup under the line lists subcommands, branches, folders, make targets and options. Up and Down move the selection, Tab inserts it."></p>
 
 - **No pty wrapper.** ZLE (the zsh line editor) draws the popup. zsh stays the terminal's foreground process, so Herdr and Ghostty show the right folder after `cd`.
 - **About 2 MB per shell.** One small Rust helper per shell. The spec index (14.7 MB, 1,455 Fig specs) is a read-only `mmap` file that all shells share. inshellisense uses about 43 MB per terminal.
@@ -185,7 +193,7 @@ What needs JS is dropped and listed in `specs/lost.txt` (262 specs), so it can b
 | `zsh tests/memory.zsh` | Private memory of 12 helpers (3) |
 | `make bench` | Latency inside the helper (4a) |
 
-`spike/` has the Milestone 0 rendering spike (pure zsh, 8 fake items) and its test.
+`spike/` has the Milestone 0 rendering spike (pure zsh, 8 fake items) and its test. The demo GIF comes from [VHS](https://github.com/charmbracelet/vhs): `make && vhs docs/demo/demo.tape`.
 
 ## Limits
 

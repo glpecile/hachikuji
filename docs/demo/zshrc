@@ -1,0 +1,12 @@
+# Shell for the demo GIF (docs/demo/demo.tape): no personal history or settings.
+fc -p /dev/null 50 50  # an empty history list
+print -s 'git status'
+PS1='%F{4}%1~%f %F{5}❯%f '
+# zsh-autosuggestions, if found: the integration test clones it here.
+for f in ${TMPDIR:-/tmp}/hachikuji-it/zsh-autosuggestions/zsh-autosuggestions.zsh \
+  /opt/homebrew/share/zsh-autosuggestions/zsh-autosuggestions.zsh; do
+  [[ -f $f ]] && { source $f; break }
+done
+export HACHIKUJI_INDEX=$PWD/build/specs.idx  # `make` builds it
+HACHIKUJI_BIN=$PWD/target/release/hachikuji source $PWD/shell/hachikuji.zsh
+source /opt/homebrew/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
