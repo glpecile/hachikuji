@@ -43,6 +43,10 @@ pub mod flag {
     pub const SHELL: u32 = 1 << 10;
     pub const SUG_FILE: u32 = 1 << 11;
     pub const SUG_FOLDER: u32 = 1 << 12;
+    /// Command: `-name` is one option, never `-n -a -m -e` (parserDirectives.flagsArePosixNoncompliant).
+    pub const POSIX_NC: u32 = 1 << 13;
+    /// Command: no options after the first argument (parserDirectives.optionsMustPrecedeArguments).
+    pub const OPTS_FIRST: u32 = 1 << 14;
     /// Bits 16..24: built-in generator id (see `builtin`).
     pub const BUILTIN_SHIFT: u32 = 16;
 }

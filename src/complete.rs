@@ -111,6 +111,8 @@ impl<'a> Walk<'a> {
             let mut argi = 0usize;
             let mut pending: Vec<u32> = Vec::new(); // args of the last option, still to fill
             let mut opts_done = false;
+            // Parser directives of the command and its parents.
+            let mut dirs = node.flags & (flag::POSIX_NC | flag::OPTS_FIRST);
             while i < words.len() {
                 let wd = words[i].as_str();
                 i += 1;
@@ -145,7 +147,7 @@ impl<'a> Walk<'a> {
                                 }
                             }
                         }
-                    } else if !wd.starts_with("--") {
+                    } else if !wd.starts_with("--") && dirs & flag::POSIX_NC == 0 {
                         // Combined short flags: -abc is -a -b -c.
                         for ch in wd[1..].chars() {
                             if let Some(o) = self.find_opt(&node, &persist, &format!("-{ch}")) {
@@ -159,9 +161,13 @@ impl<'a> Walk<'a> {
                     if let Some((_, sub)) = self.ix.children(&node).find(|(_, c)| c.kind == kind::CMD && self.ix.names(c).any(|n| n == wd)) {
                         persist.extend(self.ix.children(&node).filter(|(_, c)| c.kind == kind::OPT && c.has(flag::PERSIST)).map(|(o, _)| o));
                         node = self.load(sub);
+                        dirs |= node.flags & (flag::POSIX_NC | flag::OPTS_FIRST);
                         used.clear();
                         continue;
                     }
+                }
+                if dirs & flag::OPTS_FIRST != 0 {
+                    opts_done = true; // `chmod 644 -R`: options only before the first argument
                 }
                 let args: Vec<(u32, Node)> = self.ix.children(&node).filter(|(_, c)| c.kind == kind::ARG).collect();
                 if let Some(&(_, a)) = args.get(argi).or(args.last().filter(|(_, l)| l.has(flag::VARIADIC))) {

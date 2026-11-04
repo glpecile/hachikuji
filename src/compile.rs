@@ -117,6 +117,13 @@ fn children(w: &mut Writer, items: Vec<(&Value, u32)>) -> (u32, u32) {
 fn cmd(w: &mut Writer, v: &Value) -> Node {
     let mut n = base(w, v, kind::CMD);
     n.extra = w.s(str_field(v, "loadSpec"));
+    if let Some(d) = v.get("parserDirectives") {
+        for (f, k) in [(flag::POSIX_NC, "flagsArePosixNoncompliant"), (flag::OPTS_FIRST, "optionsMustPrecedeArguments")] {
+            if truthy(d, k) {
+                n.flags |= f;
+            }
+        }
+    }
     let mut items: Vec<(&Value, u32)> = Vec::new();
     items.extend(many(v.get("subcommands")).into_iter().map(|x| (x, kind::CMD)));
     items.extend(many(v.get("options")).into_iter().map(|x| (x, kind::OPT)));

@@ -180,6 +180,7 @@ const KEEP = new Set([
   "isPersistent", "isVariadic", "isOptional", "requiresSeparator", "requiresEquals",
   "requiresArgument", "insertValue", "hidden", "priority", "isCommand", "loadSpec",
   "template", "suggestions", "generators", "type",
+  "parserDirectives", "flagsArePosixNoncompliant", "optionsMustPrecedeArguments",
 ]);
 
 // Generators that need JS, by declared name, mapped to a built-in of the helper.

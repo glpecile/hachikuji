@@ -156,7 +156,18 @@ The specs come from [withfig/autocomplete](https://github.com/withfig/autocomple
 1. `tools/extract.ts` (Bun) reads each spec **without running it**. The TypeScript parser gives the syntax tree, and a small evaluator keeps only literal values: objects, arrays, strings, constants (also imported ones), spreads and simple `.map()` calls. Functions are never called.
 2. `hachikuji compile` writes the index: a string table plus fixed-size node records, read in place with `mmap`. Identical child lists are stored once.
 
-What needs JS is dropped and listed in `specs/lost.txt` (268 specs), so it can be ported later. Generators that run `git branch`, `git remote` or `git tag` map to the built-in git generators, and `filepaths()` and `folders()` map to the file and folder templates. Specs that are not static at all (20, for example `cargo`) give no popup.
+What needs JS is dropped and listed in `specs/lost.txt` (262 specs), so it can be ported later. Some JS generators map to built-ins of the helper (`BUILTINS` in `tools/extract.ts`):
+
+| Built-in | Used by | Source |
+|---|---|---|
+| git branches, remotes, tags | `git checkout`, `git push`, ... | `git for-each-ref`, `git remote`, `git tag` |
+| git changed files | `git add`, `git restore`, ... | `git status --short` |
+| package scripts | `npm run`, `pnpm run`, `yarn run`, `bun run` | the nearest `package.json` |
+| make targets | `make` | the Makefile (a `## text` comment is the description) |
+| ssh hosts | `ssh`, `scp`, `rsync`, `sftp`, `mosh` | `~/.ssh/config`, `~/.ssh/known_hosts` |
+| zoxide folders | `z` | `zoxide query --list` (most used first) |
+
+`filepaths()` and `folders()` map to the file and folder templates, with their `extensions` and `equals` filters (`python3` lists `.py` files). The parser directives `optionsMustPrecedeArguments` and `flagsArePosixNoncompliant` are kept. Specs that are not static at all (20, for example `cargo`) give no popup.
 
 ## Tests
 
