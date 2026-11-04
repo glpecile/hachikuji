@@ -11,7 +11,7 @@ An IDE-style completion popup for zsh, in the style of Fig and inshellisense, th
 Homebrew (after the first release is published):
 
 ```sh
-brew install glpecile/hachikuji/hachikuji
+brew install glpecile/tap/hachikuji
 ```
 
 From source (needs `rustup`, `bun` and `git`; installs to `~/.local`):
