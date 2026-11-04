@@ -1,0 +1,268 @@
+@usermn/sdc/index: not static (whole spec)
+amplify: generator postProcess
+ansible-doc: generator postProcess
+ant: generator postProcess
+apt: generator custom, generator postProcess
+arch: exclusiveOn
+arduino-cli: generator postProcess
+assimp: generator postProcess
+aws-vault: generator postProcess
+aws: generator postProcess
+aws/acm: generator postProcess, generator script function
+aws/amplify: generator custom, generator postProcess, generator script function
+aws/cloudformation: generator custom, generator postProcess, generator script function
+aws/cloudwatch: generator custom, generator postProcess, generator script function, suggestions
+aws/ec2: generator postProcess
+aws/ecs: generator custom, generator postProcess, generator script function, suggestions
+aws/eks: generator custom, generator postProcess, generator script function
+aws/elasticbeanstalk: generator custom, generator postProcess, generator script function
+aws/iam: generator custom, generator postProcess, generator script function, suggestions
+aws/lambda: generator custom, generator postProcess, generator script function
+aws/regions: not static (whole spec)
+aws/s3: generator postProcess, generator script function
+aws/s3api: generator postProcess
+aws/secretsmanager: generator custom, generator postProcess, generator script function, suggestions
+az/index: not static (whole spec)
+bat: generator postProcess
+bazel: generator postProcess
+black: generator postProcess
+bosh: generator postProcess, suggestions
+brew: generator custom, generator postProcess
+bun: generator custom, generator postProcess, generator script function, loadSpec (not a name), options
+bundle: generator postProcess
+bunx: generator postProcess
+cap: generator custom
+capacitor: generator custom
+cargo: not static (whole spec)
+cf: generator postProcess
+chezmoi: generator custom
+chown: generator custom
+chsh: generator postProcess
+cliff-jumper: description
+clion: not static (whole spec)
+coda: generator postProcess
+composer: generateSpec
+conda: generator postProcess
+copilot: generator postProcess
+cordova: generator postProcess
+create-nx-workspace: args
+curl: generator (not static)
+dapr: generator custom, generator postProcess
+dcli: generator postProcess
+dd: generator custom
+defaultbrowser: generator postProcess
+defaults: generator postProcess
+degit: generator custom
+deno: generator custom, generator postProcess, generator script function
+deployctl: generator postProcess
+django-admin: suggestions
+docker-compose: generator script function
+docker: generator postProcess, generator script function
+doppler: generator postProcess
+dotnet: generateSpec
+dotnet/dotnet-add: generator script function
+dotnet/dotnet-new: generator postProcess, generator script function
+dotnet/dotnet-run: generator postProcess
+dotnet/dotnet-tool: generator script function
+drush: generateSpec
+dscacheutil: generator custom, suggestions
+dscl: loadSpec (not a name)
+dtm: generator postProcess
+eas: suggestions
+eb: generator postProcess
+echo: generator custom
+elm-json: generator postProcess
+elm: generator postProcess
+env: generator custom
+envchain: generator postProcess
+eslint: generator custom, generator postProcess
+example/trigger: generator script function
+expo-cli: generator postProcess, generator script function
+expo: generator postProcess, generator script function
+expressots: generator postProcess
+ffmpeg: generator postProcess
+fig/1.0.0: generateSpec, generator custom, generator postProcess
+fig/2.0.0: generateSpec, generator custom, generator postProcess, loadSpec (not a name)
+fig/index: not static (whole spec)
+fig/shared: not static (whole spec)
+fin: generateSpec, generator postProcess
+firebase: generator postProcess
+firefox: generator custom
+fisher: generator postProcess
+flutter: generator postProcess
+fly: generator postProcess
+flyctl: generator postProcess
+fnm: generator postProcess
+fvm: generator postProcess
+gem: generator custom
+gh: generator custom, generator postProcess
+git-cliff: generator postProcess
+git-flow: generator custom
+git-profile: generator postProcess
+git: generateSpec, generator custom, generator postProcess, generator script function
+goland: not static (whole spec)
+goto: generator custom
+gource: generator postProcess
+gpg: generator postProcess
+herd: generator postProcess, options
+heroku/8.0.0: generator postProcess
+heroku/8.6.0: generator postProcess
+heroku/index: not static (whole spec)
+heroku/shared: not static (whole spec)
+hexo: generator postProcess
+hugo: generator postProcess
+hyper: generator postProcess
+ibus: generator postProcess
+iconv: generator postProcess
+id: generator postProcess
+idea: not static (whole spec)
+ignite-cli: generator postProcess
+infracost/index: not static (whole spec)
+ipatool: generator script function
+j: generator custom
+jenv: generator postProcess
+just: generator script function
+k3d: generator postProcess
+k9s: generator postProcess
+kamal: generateSpec
+kill: generator postProcess
+killall: generator postProcess
+kind: generator postProcess
+kitty: suggestions
+kool: generator postProcess
+kubectl: generator postProcess, generator script function, options
+kubectx: generator postProcess
+kubens: generator postProcess
+launchctl: generator postProcess
+lerna: generator postProcess
+login: generator postProcess
+lp: suggestions
+lsof: generator postProcess
+m: generator postProcess
+mackup: generator postProcess
+magento: generateSpec
+make: generator custom
+mamba: generator postProcess, generator script function
+man: generator custom
+mask: generateSpec
+mdfind: generator custom
+meteor: generator postProcess
+mgnl: generator custom
+mix: generator postProcess
+mkinitcpio: generator postProcess
+mosh: generator custom
+mount: generator postProcess
+multipass: generator postProcess
+n: generator postProcess
+networkQuality: generator postProcess
+networksetup: generator postProcess
+nextflow: generator postProcess
+ng: generator postProcess
+ni: generator custom
+node: generateSpec
+npm: generator custom, generator postProcess
+npx: generator postProcess
+nr: generator postProcess
+nrm: generator custom
+ns: generator postProcess
+nx: generateSpec, generator custom, generator postProcess, generator script function
+okteto: generator postProcess
+ollama: generator postProcess
+op: generator postProcess
+oxlint: generator custom, generator postProcess
+pandoc: generator postProcess
+pass: generator custom
+passwd: generator postProcess
+php: generateSpec
+php/artisan: generateSpec
+php/bin-console: generateSpec
+php/please: generateSpec
+phpstorm: not static (whole spec)
+phpunit-watcher: generator postProcess
+pip: generator postProcess
+pip3: generator postProcess
+pipx: generator postProcess
+pkgutil: generator custom, generator postProcess
+pnpm: generateSpec, generator custom, generator postProcess
+podman: generator postProcess, generator script function
+pre-commit: generator postProcess
+projj: generator custom
+pulumi: generator postProcess
+pycharm: not static (whole spec)
+pyenv: generator postProcess
+python: generateSpec
+python3: generateSpec
+q: generator postProcess
+quickmail: generator postProcess
+r: options
+rails: generateSpec
+rake: generator postProcess
+rancher: generator postProcess
+rbenv: args
+rclone: generator postProcess
+react-native: generator postProcess
+redwood: generator postProcess
+rich: generator custom
+robot: generator custom, generator postProcess
+rsync: generator custom, suggestions
+rubocop: generator postProcess
+rubymine: not static (whole spec)
+rugby: generateSpec, generator postProcess
+rush: generator custom, generator postProcess
+rushx: generator postProcess
+rustrover: not static (whole spec)
+rustup: generateSpec, generator postProcess
+sake: generateSpec, generator postProcess
+sam: generator postProcess
+scarb: generator postProcess
+scp: generator custom
+serverless: generateSpec
+sftp: generator custom
+shadcn-ui: generator custom
+shopify/index: not static (whole spec)
+shortcuts: generator postProcess, subcommands
+sls: generateSpec
+snaplet: generator postProcess
+softwareupdate: generator postProcess
+spring: generator custom
+ssh-keygen: exclusiveOn
+ssh: generator custom
+st2: generator custom
+stepzen: generator postProcess
+svtplay-dl: generator postProcess
+sysctl: generator postProcess
+systemctl: generator custom
+task: generateSpec
+task/go-task: generator postProcess
+task/taskwarrior: generator postProcess
+terraform: generator postProcess
+terragrunt: generator postProcess
+tfenv: generator postProcess
+tfsec: generator postProcess
+tldr: generator custom, generator postProcess
+tmux: args
+tmuxinator: generator postProcess, loadSpec (not a name)
+trex: generator postProcess
+trivy: generator custom
+ts-node: generator custom
+tsh: generator postProcess
+tsuru: generator postProcess
+turbo: generator postProcess
+unset: generator postProcess
+v: generator postProcess
+valet: generator postProcess
+vite: generator postProcess
+vultr-cli: generator postProcess
+watson: generator postProcess
+wd: generator custom
+webstorm: not static (whole spec)
+which: generator postProcess
+wifi-password: generator postProcess
+xc: generateSpec
+xcodes: generator postProcess
+yalc: generator postProcess
+yarn: generateSpec, generator custom, generator postProcess, generator script function, loadSpec (not a name)
+ykman: generator custom, generator postProcess
+yo: generator postProcess
+youtube-dl: generator (not static), generator custom, generator postProcess, generator script function
+z: generateSpec
