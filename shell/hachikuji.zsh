@@ -28,6 +28,7 @@ typeset -gA _hk_prev _hk_role=(
 # --- transport -----------------------------------------------------------------------------
 
 _hk_start() {
+  emulate -L zsh
   [[ -x $_hk_bin ]] && zmodload zsh/system zsh/zselect 2>/dev/null || return 1
   (( EPOCHSECONDS - _hk_started >= 60 )) || return 1  # restart at most once a minute
   _hk_started=$EPOCHSECONDS
@@ -68,6 +69,7 @@ _hk_send() {
 }
 
 _hk_stop() {
+  emulate -L zsh
   (( _hk_rfd >= 0 )) && { zle -F $_hk_rfd 2>/dev/null; exec {_hk_rfd}<&- }
   (( _hk_wfd >= 0 )) && exec {_hk_wfd}>&-
   (( _hk_pid > 0 )) && kill -9 $_hk_pid 2>/dev/null
@@ -76,6 +78,7 @@ _hk_stop() {
 
 # One request in flight at most. While one is in flight, only remember that a newer one is due.
 _hk_request() {
+  emulate -L zsh
   if (( _hk_wfd < 0 )); then _hk_start || return; fi
   if (( _hk_inflight )); then _hk_pending=1; return; fi
   local -i bytes
@@ -86,6 +89,7 @@ _hk_request() {
 
 # Reads what the helper wrote and handles each complete frame. $1: seconds to wait for data.
 _hk_read() {
+  emulate -L zsh
   (( _hk_rfd >= 0 )) || return
   local chunk
   sysread -s 65536 -t ${1:-0} -i $_hk_rfd chunk
@@ -102,6 +106,7 @@ _hk_read() {
 }
 
 _hk_frame() {
+  emulate -L zsh
   local -a f=( "${(@ps:\x1f:)1}" )
   [[ $f[1] == 1 ]] || { _hk_stop; return }  # another protocol version
   [[ $f[3] == h ]] && { _hk_pid=$f[4]; return }
@@ -114,10 +119,11 @@ _hk_frame() {
   _hk_open=$(( _hk_count > 0 ))
 }
 
-hachikuji-recv() { _hk_read 0; _hk_draw; zle -R }
+hachikuji-recv() { emulate -L zsh; _hk_read 0; _hk_draw; zle -R }
 
 # Waits up to 100 ms for the newest response, so Tab and Enter act on what the user sees.
 _hk_sync() {
+  emulate -L zsh
   local -i n=0
   while (( _hk_inflight && n++ < 10 )); do _hk_read 0.01; done
 }
@@ -126,6 +132,7 @@ _hk_sync() {
 
 # Puts the popup after the ghost text of zsh-autosuggestions (if any), or removes it.
 _hk_draw() {
+  emulate -L zsh
   local ghost=${POSTDISPLAY%"$_hk_popup"} e
   region_highlight=( ${region_highlight:#*memo=hachikuji} )
   _hk_popup=
@@ -142,6 +149,7 @@ _hk_draw() {
 }
 
 _hk_pre_redraw() {
+  emulate -L zsh
   # No response in 1 s: the helper hangs. Kill it; no popup.
   (( _hk_inflight && EPOCHREALTIME - _hk_sent > 1 )) && _hk_stop
   local key="$CURSOR:$KEYMAP:$BUFFER"
@@ -159,9 +167,10 @@ _hk_pre_redraw() {
   _hk_draw
 }
 
-_hk_finish() { _hk_open=0 _hk_armed=0 _hk_key=; _hk_draw }
+_hk_finish() { emulate -L zsh; _hk_open=0 _hk_armed=0 _hk_key=; _hk_draw }
 
 _hk_accept() {
+  emulate -L zsh
   _hk_sync
   (( _hk_open )) || return 1
   # \x01 marks where the cursor goes: `-m '\x01'` puts it between the quotes.
@@ -178,23 +187,33 @@ _hk_accept() {
 # --- keys ----------------------------------------------------------------------------------
 
 # Tab, Enter, Esc, Up, Down, ^N, ^P, Shift-Tab. With the popup closed, run the widget the key had before.
+# That widget runs with the user's options; our part runs with zsh's (sh_word_split, ksh_arrays, ...).
 hachikuji-key() {
+  local REPLY=
+  _hk_key_press || return 0
+  zle $REPLY
+  _hk_key_after $REPLY
+}
+
+# Handles the key. Returns 1 when done, or 0 with the widget to run in REPLY.
+_hk_key_press() {
+  emulate -L zsh
   local k=${${(V)KEYS}/#%\\t/^I}  # (V) shows Tab as \t, bindkey as ^I
   # open = "tab": the first Tab opens the popup. A Tab with nothing to show runs zsh completion.
   if (( _hk_tab && ! _hk_armed && ! _hk_open )) && [[ $_hk_role[$k] == tab && -n $BUFFER ]]; then
     _hk_armed=1 _hk_key=
-    return
+    return 1
   fi
   # A fast Tab after an insert: the popup for the next word is still on its way. Wait for it,
   # or Tab falls through to zsh completion ("do you wish to see all 1980 possibilities?").
   [[ $_hk_role[$k] == tab ]] && (( _hk_inflight && ! _hk_open )) && _hk_sync
   if (( _hk_open && _hk_count )); then
     case $_hk_role[$k] in
-      up)    (( _hk_sel = (_hk_sel + _hk_count - 1) % _hk_count, _hk_moved = 1 )); _hk_request; return ;;
-      down)  (( _hk_sel = (_hk_sel + 1) % _hk_count, _hk_moved = 1 )); _hk_request; return ;;
-      tab)   _hk_accept && return ;;
-      esc)   _hk_open=0 _hk_dismissed=1 _hk_armed=0; _hk_draw; return ;;
-      enter) (( _hk_moved )) && _hk_accept && return
+      up)    (( _hk_sel = (_hk_sel + _hk_count - 1) % _hk_count, _hk_moved = 1 )); _hk_request; return 1 ;;
+      down)  (( _hk_sel = (_hk_sel + 1) % _hk_count, _hk_moved = 1 )); _hk_request; return 1 ;;
+      tab)   _hk_accept && return 1 ;;
+      esc)   _hk_open=0 _hk_dismissed=1 _hk_armed=0; _hk_draw; return 1 ;;
+      enter) (( _hk_moved )) && _hk_accept && return 1
              _hk_open=0 _hk_dismissed=1; _hk_draw ;;
     esac
   fi
@@ -203,15 +222,19 @@ hachikuji-key() {
   if [[ $_hk_role[$k] == tab && $KEYMAP != vicmd ]] && (( _hk_wfd >= 0 )); then
     if [[ $LASTWIDGET != hachikuji-key || $_hk_tab1 != "$CURSOR:$BUFFER" ]]; then
       _hk_tab1="$CURSOR:$BUFFER"
-      return
+      return 1
     fi
     _hk_tab1=
   fi
-  local w=$_hk_prev[${KEYMAP/#%main/$_hk_main}:$k]
-  [[ $w == (|undefined-key) ]] && return
-  zle $w
-  # Up/Down walked history: keep the popup closed, so the next Up keeps walking.
-  [[ $w == *(history|search)* ]] && _hk_key="$CURSOR:$KEYMAP:$BUFFER" _hk_open=0
+  REPLY=$_hk_prev[${KEYMAP/#%main/$_hk_main}:$k]
+  [[ $REPLY != (|undefined-key) ]]
+}
+
+# Up/Down walked history: keep the popup closed, so the next Up keeps walking.
+_hk_key_after() {
+  emulate -L zsh
+  [[ $1 == *(history|search)* ]] && _hk_key="$CURSOR:$KEYMAP:$BUFFER" _hk_open=0
+  return 0
 }
 
 # Widgets that zsh-autosuggestions uses to accept the ghost text (BUFFER+=POSTDISPLAY), and its
@@ -220,10 +243,10 @@ hachikuji-pass() { _hk_open=0; _hk_draw; zle ${WIDGET##*hachikuji-pass-} }
 
 # In async mode (the default), autosuggest-suggest sets POSTDISPLAY from a zle -F handler and
 # calls zle -R, which does not run line-pre-redraw. Put the popup back after it.
-hachikuji-suggest() { zle hachikuji-orig-suggest -- "$@"; _hk_draw; zle -R }
+hachikuji-suggest() { zle hachikuji-orig-suggest -- "$@"; emulate -L zsh; _hk_draw; zle -R }
 
-hachikuji-INT()   { _hk_open=0 _hk_armed=0 _hk_key=; _hk_draw; zle -R }
-hachikuji-WINCH() { _hk_request; _hk_draw; zle -R }
+hachikuji-INT()   { emulate -L zsh; _hk_open=0 _hk_armed=0 _hk_key=; _hk_draw; zle -R }
+hachikuji-WINCH() { emulate -L zsh; _hk_request; _hk_draw; zle -R }
 
 _hk_on_signal() {
   local sig=$1; shift
@@ -236,6 +259,9 @@ _hk_on_signal() {
 
 # Once, at the first prompt, when .zshrc and all plugins are loaded.
 _hk_setup() {
+  # local_traps (part of emulate -L) would remove the TRAPINT and TRAPWINCH set here on return.
+  emulate -L zsh
+  setopt no_local_traps
   add-zsh-hook -d precmd _hk_setup
   zmodload -F zsh/files b:zf_rm 2>/dev/null
   # Compile this file once: the next shells load the .zwc in 0.1 ms instead of 2 ms.
@@ -295,7 +321,7 @@ _hk_setup() {
 }
 
 () {
-  local w
+  emulate -L zsh
   zle -N hachikuji-key; zle -N hachikuji-pass; zle -N hachikuji-recv; zle -N hachikuji-suggest
   zle -N hachikuji-INT; zle -N hachikuji-WINCH
   (( ${+ZSH_AUTOSUGGEST_IGNORE_WIDGETS} )) && ZSH_AUTOSUGGEST_IGNORE_WIDGETS+=('hachikuji-*')

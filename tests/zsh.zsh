@@ -330,6 +330,14 @@ T send-keys Enter
 sleep 0.6
 ! has 'not found' && ! has 'no such'; check 'autosuggest-accept with the popup open runs only the line' $?
 
+# 27. user options (sh_word_split, ksh_arrays) do not break the keys or print errors
+start 90 24 "setopt sh_word_split ksh_arrays"
+T send-keys 'git ch'
+waitfor "$top*checkout"
+T send-keys Tab
+waitfor "❯ git checkout"; r=$?
+(( r == 0 )) && ! has 'bad output' && ! has 'hachikuji.zsh'; check 'Tab works with sh_word_split and ksh_arrays, no error text' $?
+
 T kill-server 2>/dev/null || true
 print -r -- "$fails failed"
 (( fails == 0 ))
