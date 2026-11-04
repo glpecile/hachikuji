@@ -10,6 +10,8 @@ An IDE-style completion popup for zsh, in the style of Fig and inshellisense, th
 
 ## Install
 
+> **Agents:** to install hachikuji for a user, or to replace Kiro CLI, Amazon Q, Fig or inshellisense with it, follow [docs/MIGRATION.md](docs/MIGRATION.md).
+
 Script (macOS, Linux aarch64; installs to `~/.local`, or to `$PREFIX`):
 
 ```sh
