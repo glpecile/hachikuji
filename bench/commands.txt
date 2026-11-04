@@ -1,0 +1,18 @@
+git status
+git checkout main
+git commit -m "fix the thing" --amend
+git push origin main --force-with-lease
+git log --oneline -n 20
+git add src/main.rs
+git -C spike status -s
+git branch -D old-feature
+git rebase -i main
+git diff --staged --stat
+sudo git pull --rebase
+echo $(git rev-parse HEAD)
+ls -la | grep foo && git stash pop
+docker run --rm -it -v "$PWD:/app" node:20 npm test
+npm install --save-dev typescript
+cargo build --release --target x86_64-apple-darwin
+brew install --cask ghostty
+kubectl get pods -n kube-system -o wide
