@@ -349,6 +349,19 @@ pre=${row%%Show the working tree*}
 last=${pre##*$'\e['}  # the last color code before the description: 39m (default), never 90m (gray)
 [[ -n $row && $last != 90m* ]]; check "popup text is not gray after Left (${last%%m*})" $?
 
+# 29. Tab never applies an old response to a newer line
+start
+T send-keys 'git ch'
+waitfor "$top*checkout"
+hp=$(helper)
+kill -STOP $hp
+T send-keys e
+sleep 0.2
+T send-keys Tab
+sleep 0.5
+! has 'ccheckout' && has '❯ git che'; check 'Tab with no fresh response inserts nothing' $?
+kill -CONT $hp 2>/dev/null
+
 T kill-server 2>/dev/null || true
 print -r -- "$fails failed"
 (( fails == 0 ))

@@ -172,7 +172,8 @@ _hk_finish() { emulate -L zsh; _hk_open=0 _hk_armed=0 _hk_key=; _hk_draw }
 _hk_accept() {
   emulate -L zsh
   _hk_sync
-  (( _hk_open )) || return 1
+  # Still no response for the newest line: the popup on screen is for an older line.
+  (( _hk_open && ! _hk_inflight && ! _hk_pending )) || return 1
   # \x01 marks where the cursor goes: `-m '\x01'` puts it between the quotes.
   local ins=$_hk_insert post=
   [[ $ins == *$'\x01'* ]] && post=${ins#*$'\x01'} ins=${ins%%$'\x01'*}
