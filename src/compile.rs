@@ -17,7 +17,11 @@ pub fn compile_dir(dir: &Path, out: &Path) -> io::Result<()> {
             .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, format!("{}: {e}", path.display())))?;
         add_root(&mut w, name, &v);
     }
-    std::fs::write(out, w.finish())
+    // Write a new file and rename it: running helpers keep their mapping of the old file (an
+    // in-place write would change the pages they read, or cut the file under them: SIGBUS).
+    let tmp = out.with_extension("tmp");
+    std::fs::write(&tmp, w.finish())?;
+    std::fs::rename(&tmp, out)
 }
 
 fn collect(base: &Path, dir: &Path, out: &mut Vec<(String, std::path::PathBuf)>) -> io::Result<()> {
