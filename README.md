@@ -5,7 +5,7 @@
 An IDE-style completion popup for zsh, in the style of Fig and inshellisense, that uses almost no memory.
 
 - **No pty wrapper.** ZLE (the zsh line editor) draws the popup. zsh stays the terminal's foreground process, so Herdr and Ghostty show the right folder after `cd`.
-- **About 2 MB per shell.** One small Rust helper per shell. The spec index (14.7 MB, every Fig spec) is a read-only `mmap` file that all shells share. inshellisense uses about 43 MB per terminal.
+- **About 2 MB per shell.** One small Rust helper per shell. The spec index (14.7 MB, 1,455 Fig specs) is a read-only `mmap` file that all shells share. inshellisense uses about 43 MB per terminal.
 - **Colors follow the terminal theme.** Only the 16 palette colors, the default colors, and reverse video. When the terminal switches between light and dark, the popup follows with no code and no restart.
 
 ## Install
@@ -26,10 +26,10 @@ brew install glpecile/tap/hachikuji
 
 Both need the first release to be published.
 
-From source (needs `rustup`, `bun` and `git`; installs to `~/.local`):
+From source (needs `rustup`, `bun` and `git`; installs to `~/.local`, or to `PREFIX=...`):
 
 ```sh
-make install
+git clone https://github.com/glpecile/hachikuji && cd hachikuji && make install
 ```
 
 Then add the line that `hachikuji init zsh` prints to `~/.zshrc`, **before** zsh-syntax-highlighting (it must load last). Add the printed line, not `eval "$(hachikuji init zsh)"`: the eval would start the binary at each shell start.
@@ -44,7 +44,7 @@ The helper starts on the first key, not in `.zshrc`.
 
 | Key | Popup open | Popup closed |
 |---|---|---|
-| Up, Down, Ctrl-P, Ctrl-N, Shift-Tab | Move the selection | The key's own widget (history) |
+| Up, Down, Ctrl-P, Ctrl-N, Shift-Tab | Move the selection | The key's own widget (Up and Down walk history) |
 | Tab | Insert the selected item | Nothing; a second Tab runs the key's own widget (zsh completion) |
 | Enter | Insert the item if you moved the selection; else run the line | Run the line |
 | Esc | Close the popup (after `KEYTIMEOUT`, 0.4 s by default) | The key's own widget (vi command mode) |
@@ -68,13 +68,13 @@ fuzzy = true              # "chk" finds checkout, but only when no name starts w
 
 Default colors: names and descriptions use the default foreground. Borders use palette 8. The icon has the kind color: subcommand 4, option 5, folder 6, command 2.
 
-Palette 8 is not readable as text: 2.5:1 in Catppuccin Mocha and 1.9:1 in Ghostty's built-in Catppuccin Latte. So, unlike the first plan, descriptions do not use it. Contrast of the defaults, in the Catppuccin copies that these dotfiles use:
+Palette 8 is not readable as text: 2.5:1 in Catppuccin Mocha and 1.9:1 in Catppuccin Latte. So only the border uses it. Contrast of the defaults in Ghostty's Catppuccin themes:
 
 | | Mocha | Latte |
 |---|---|---|
 | Names and descriptions (default foreground) | 11.3:1 | 7.1:1 |
 | Selected row (reverse) | 11.3:1 | 7.1:1 |
-| Border (palette 8) | 2.5:1 | 4.4:1 |
+| Border (palette 8) | 2.5:1 | 1.9:1 |
 
 ## Numbers
 
@@ -121,11 +121,11 @@ Memory: `footprint` of 12 open terminals (inshellisense: `node` 13 MB + native 3
 |---|---|---|---|
 | 1 | No pty wrapper | zsh is the foreground process | yes; Herdr `hc get` shows `zsh` and its folder |
 | 2 | Native only | no JS or Python | one 700 KB Rust binary |
-| 3 | Memory per helper | < 4 MB | max 2.26 MB |
-| 4a | Latency in the helper | p99 < 16 ms | p99 0.16 ms |
-| 4b | Key press to popup | p99 < 16 ms | p99 11.5 ms |
-| 5 | Added startup | < 10 ms | 5.3 to 7.8 ms |
-| 6 | Fail silent | no hang | a hung helper is killed after 1 s |
+| 3 | Memory per helper | < 4 MB | max 2.19 MB |
+| 4a | Latency in the helper | p99 < 16 ms | p99 0.14 ms |
+| 4b | Key press to popup | p99 < 16 ms | p99 11.6 ms |
+| 5 | Added startup | < 10 ms | 6.4 to 8.0 ms |
+| 6 | Fail silent | no hang | writes never block; a hung helper is killed after 1 s |
 | 7 | No network | none | no network code |
 | 8 | Platforms | macOS; Linux builds | macOS arm64, x86_64; Linux aarch64 |
 | 9 | Theme colors | palette 0 to 15 | SGR 0, 1, 7, 32 to 36, 39, 90 only |
@@ -142,7 +142,7 @@ zsh (shell/hachikuji.zsh)                       hachikuji serve (Rust, one per s
 ```
 
 - **Drawing.** The popup goes in `POSTDISPLAY` after the zsh-autosuggestions ghost text, colored with `region_highlight`. ZLE then handles the bottom of the screen, multi-line prompts and resize. Drawing with escape codes (save cursor, draw, restore) was tried and dropped: at the bottom of the screen it drew a new copy of the rows on each key, and it left rows in the scrollback.
-- **Transport.** Two FIFOs in a private folder. zsh opens both read-write, so no open blocks. At most one request is in flight; zsh keeps only the newest pending one. Requests carry a sequence number; older responses are dropped.
+- **Transport.** Two FIFOs in a private folder. zsh opens both read-write, so no open blocks, and close-on-exec, so child processes do not keep them (the helper exits with the shell). Writes are non-blocking: a FIFO holds 8 KB, and a helper that reads nothing for 100 ms is stopped. At most one request is in flight; zsh keeps only the newest pending one. Requests carry a sequence number; older responses are dropped, and Tab never inserts one.
 - **Helper process.** `setsid()`, so Ctrl-C never reaches it and it is never the foreground process. It ignores SIGINT, SIGTSTP and SIGHUP, runs in `/`, and exits on EOF or EPIPE.
 - **Protocol** (version 1). Request: NUL-terminated fields `1 q seq cursor-bytes pwd columns lines selected buffer`. Response: fields separated by 0x1F, ended by 0x1E: `1 seq r count selected replace-chars insert popup-text highlights`. `src/serve.rs` has the details.
 - **Widths.** The helper cuts rows to `COLUMNS`. It drops emoji, symbols and zero-width characters from the display: zsh and the terminal disagree on their width, and one disagreement makes ZLE leave old text on screen.
@@ -178,8 +178,8 @@ What needs JS is dropped and listed in `specs/lost.txt` (262 specs), so it can b
 
 | Command | What it checks |
 |---|---|
-| `cargo test` | Tokenizer (quotes, pipes, subshells, aliases, cursor in the middle, multibyte, 200,000 random lines), golden spec tests (specs in, lookups out), renderer, protocol, generators |
-| `zsh tests/zsh.zsh` | 25 checks on a real zsh in tmux with zsh-autosuggestions, starship and zsh-syntax-highlighting: keys, Ctrl-C, history, bottom of screen, resize, paste, colors, vi mode, foreground process, stopped helper, orphans, and a key-by-key run where the screen must equal a full redraw |
+| `cargo test` | Tokenizer (quotes, pipes, subshells, aliases, cursor in the middle, multibyte, 200,000 random lines), golden spec tests (specs in, lookups out), matching, file filters, quoting, renderer, protocol, generators |
+| `zsh tests/zsh.zsh` | 36 checks on a real zsh in tmux with zsh-autosuggestions, starship and zsh-syntax-highlighting: keys (Tab, Enter, Esc, Shift-Tab, two Tabs, `open = "tab"`), Ctrl-C, history, bottom of screen, resize, paste, colors, vi mode, user options, foreground process, a stopped or dead helper, child processes, orphans, and a key-by-key run where the screen must equal a full redraw |
 | `python3 tests/e2e_latency.py` | Key press to updated popup (4b) |
 | `python3 tests/startup.py` | Startup cost (5) |
 | `zsh tests/memory.zsh` | Private memory of 12 helpers (3) |
