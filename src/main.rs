@@ -150,13 +150,11 @@ fn nu(buf: &str) {
     let line = tokenize::parse(buf, buf.len());
     let mut cache = generate::Cache::default();
     let mut res = complete::complete(&ix, &line, &pwd, &cache, &[]);
-    if !res.missing.is_empty() {
-        for g in res.missing {
-            let items = generate::run(&g);
-            cache.put(g.key, items);
-        }
-        res = complete::complete(&ix, &line, &pwd, &cache, &[]);
+    for g in res.missing {
+        let items = generate::run(&g);
+        cache.put(g.key, items);
     }
+    res = complete::complete(&ix, &line, &pwd, &cache, &[]);
     if !cfg.fuzzy {
         res.cands.retain(|c| c.score < 2);
     }
@@ -178,20 +176,8 @@ fn nu_value(c: &complete::Cand) -> String {
     if !text.chars().any(|ch| ch.is_whitespace() || ch.is_control() || "'\"`$()[]{}|;#\\".contains(ch)) {
         return text + space;
     }
-    let mut q = String::from('"');
-    for ch in text.chars() {
-        match ch {
-            '"' | '\\' => {
-                q.push('\\');
-                q.push(ch);
-            }
-            '\n' => q.push_str("\\n"),
-            '\t' => q.push_str("\\t"),
-            ch if ch.is_control() => q.push_str(&format!("\\u{{{:x}}}", ch as u32)),
-            ch => q.push(ch),
-        }
-    }
-    q + "\"" + space
+    // Rust's string escapes (\", \\, \n, \t, \u{..}) are valid in a nushell "..." string.
+    format!("{text:?}{space}")
 }
 
 /// Latency inside the helper: parse the request frame, complete, render, write the response.
