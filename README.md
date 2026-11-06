@@ -26,11 +26,13 @@ Script (macOS, Linux aarch64; installs to `~/.local`, or to `$PREFIX`):
 curl -fsSL https://github.com/glpecile/hachikuji/releases/latest/download/install.sh | sh
 ```
 
-Homebrew:
+Homebrew (macOS):
 
 ```sh
 brew install glpecile/tap/hachikuji
 ```
+
+This installs from our own tap, [glpecile/homebrew-tap](https://github.com/glpecile/homebrew-tap), not from homebrew-core. Use the full name, in one command: it adds the tap and trusts the formula. `brew tap glpecile/tap` and then `brew install hachikuji` fails, because Homebrew 7 does not load formulas from an untrusted tap. [docs/RELEASING.md](docs/RELEASING.md#the-homebrew-tap) tells why we have a tap and what it holds.
 
 Then add the line that `hachikuji init zsh` prints to `~/.zshrc`, **before** zsh-syntax-highlighting (it must load last). Add the printed line, not `eval "$(hachikuji init zsh)"`: the eval would start the binary at each shell start.
 
@@ -191,7 +193,7 @@ Build and install from source (needs `rustup`, `bun` and `git`; installs to `~/.
 git clone https://github.com/glpecile/hachikuji && cd hachikuji && make install
 ```
 
-`make test` runs every check in the table below; `make unit` runs only `cargo test`.
+`make test` runs every check in the table below; `make unit` runs only `cargo test`. To publish a version, follow [docs/RELEASING.md](docs/RELEASING.md).
 
 ## Tests
 
