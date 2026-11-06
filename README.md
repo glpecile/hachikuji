@@ -233,7 +233,7 @@ git clone https://github.com/glpecile/hachikuji && cd hachikuji && make install
 - A switch between `bindkey -v` and `bindkey -e` after the first prompt is not seen.
 - No popup for commands without a static spec (`cargo`, for example), and no history or usage ranking.
 - zsh and nushell only. There are no plans for bash, fish or Windows.
-- In nushell, an option that puts the cursor between quotes (`git commit --mes` gives `-m '|'` in zsh) inserts the option's name (`--message`).
+- In nushell, an option that puts the cursor between quotes (`curl -d` gives `-d '|'` in zsh) inserts the text before the quotes (`-d `).
 
 ## License
 

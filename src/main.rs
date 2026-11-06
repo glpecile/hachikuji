@@ -167,10 +167,10 @@ fn nu(buf: &str) {
 }
 
 /// The text nushell inserts, with the space or `/` after it (nushell adds no space). Nushell
-/// cannot put the cursor in the middle, so `-m '{cursor}'` inserts the option's name instead.
+/// cannot put the cursor in the middle, so `-m '{cursor}'` inserts the text before the quote (`-m `).
 fn nu_value(c: &complete::Cand) -> String {
     if c.raw {
-        return if c.body.contains("{cursor}") { format!("{} ", c.name) } else { c.body.clone() };
+        return c.body.split_once("{cursor}").map_or(&*c.body, |(head, _)| head.trim_end_matches(['\'', '"'])).to_string();
     }
     let (text, space) = if c.suffix == " " { (c.body.clone(), " ") } else { (format!("{}{}", c.body, c.suffix), "") };
     if !text.chars().any(|ch| ch.is_whitespace() || ch.is_control() || "'\"`$()[]{}|;#\\*?".contains(ch)) {
@@ -227,14 +227,15 @@ mod tests {
 
     #[test]
     fn nu_values_quote_for_nushell() {
-        let c = |body: &str, suffix, raw| Cand { name: "--message".into(), desc: String::new(), kind: Kind::Arg, priority: 0, score: 0, body: body.into(), suffix, raw };
+        let c = |body: &str, suffix, raw| Cand { name: "-m, --message".into(), desc: String::new(), kind: Kind::Arg, priority: 0, score: 0, body: body.into(), suffix, raw };
         assert_eq!(nu_value(&c("main", " ", false)), "main ");
         assert_eq!(nu_value(&c("src", "/", false)), "src/");
         assert_eq!(nu_value(&c("my dir", "/", false)), r#""my dir/""#);
         assert_eq!(nu_value(&c(r#"a"b\c"#, " ", false)), r#""a\"b\\c" "#);
         assert_eq!(nu_value(&c("a\tb", "=", false)), r#""a\tb=""#);
         assert_eq!(nu_value(&c("what?.txt", " ", false)), r#""what?.txt" "#);
-        assert_eq!(nu_value(&c("-m '{cursor}'", "", true)), "--message ");
+        assert_eq!(nu_value(&c("-m '{cursor}'", "", true)), "-m ");
+        assert_eq!(nu_value(&c("http.{cursor}", "", true)), "http.");
         assert_eq!(nu_value(&c("--force", "", true)), "--force");
     }
 
