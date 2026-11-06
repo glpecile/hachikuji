@@ -1,7 +1,7 @@
 #!/bin/sh
 # Builds the release archives and the Homebrew formula. Run with `make release`.
 # Each archive: bin/hachikuji, share/hachikuji/{hachikuji.zsh,specs.idx,FIG-LICENSE}, README.md, LICENSE.
-# It publishes nothing: upload with `gh release create v<version> build/release/*.tar.gz build/release/install.sh`.
+# It publishes nothing. The publish steps (GitHub release, then the Homebrew tap) are in docs/RELEASING.md.
 set -eu
 cd "$(dirname "$0")/.."
 PATH=/opt/homebrew/opt/rustup/bin:$HOME/.cargo/bin:$PATH
