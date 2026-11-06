@@ -2,7 +2,7 @@
 
 This guide replaces Kiro CLI, Amazon Q Developer CLI, Fig or inshellisense with hachikuji. It is written for coding agents that do the work for a user, and people can follow it too. Run the steps in order. Each step has a check.
 
-hachikuji supports zsh only, on macOS and Linux (aarch64). For bash or fish, stop and tell the user.
+hachikuji supports zsh and nushell, on macOS and Linux (aarch64). This guide covers zsh. For nushell, see the Nushell part of the README. For bash or fish, stop and tell the user.
 
 ## Rules for agents
 

@@ -42,6 +42,23 @@ HACHIKUJI_BIN='/Users/you/.local/bin/hachikuji' source '/Users/you/.local/share/
 
 The helper starts on the first key, not in `.zshrc`.
 
+### Nushell
+
+In nushell, hachikuji supplies the items and nushell's own completion menu shows them. Nushell calls hachikuji on Tab for external commands (`git`, `docker`, `make`). Nushell's own commands keep their own completions. Save the config once, in an autoload folder:
+
+```nu
+mkdir ($nu.user-autoload-dirs | first)
+hachikuji init nu | save -f ($nu.user-autoload-dirs | first | path join hachikuji.nu)
+```
+
+The file sets `$env.config.completions.external.completer`, so it replaces another external completer (carapace, for example). For a popup next to the line that shows the description, add this to `config.nu`:
+
+```nu
+$env.config.menus ++= [{name: completion_menu, only_buffer_difference: false, marker: "| ", type: {layout: ide}, style: {}}]
+```
+
+Each Tab starts the binary once (about 4 ms). Generators run in that call, and there is no cache between calls.
+
 ### Update
 
 ```sh
@@ -213,7 +230,8 @@ git clone https://github.com/glpecile/hachikuji && cd hachikuji && make install
 - Aliases and `PATH` are read when the helper starts; later changes need a new shell.
 - A switch between `bindkey -v` and `bindkey -e` after the first prompt is not seen.
 - No popup for commands without a static spec (`cargo`, for example), and no history or usage ranking.
-- zsh only. There are no plans for bash, fish or Windows.
+- zsh and nushell only. There are no plans for bash, fish or Windows.
+- In nushell, an option that puts the cursor between quotes (`git commit --mes` gives `-m '|'` in zsh) inserts the option's name (`--message`).
 
 ## License
 
