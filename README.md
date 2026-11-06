@@ -42,6 +42,26 @@ HACHIKUJI_BIN='/Users/you/.local/bin/hachikuji' source '/Users/you/.local/share/
 
 The helper starts on the first key, not in `.zshrc`.
 
+### Nushell
+
+In nushell, hachikuji supplies the items and nushell's own completion menu shows them. Nushell calls hachikuji on Tab for external commands (`git`, `docker`, `make`). Nushell's own commands keep their own completions. Save the config in an autoload folder. Save it again after an update:
+
+```nu
+mkdir ($nu.user-autoload-dirs | first)
+hachikuji init nu | save -f ($nu.user-autoload-dirs | first | path join hachikuji.nu)
+```
+
+The file sets `$env.config.completions.external.completer`, so it replaces another external completer (carapace, for example). For a popup next to the line that shows the description, add this to `config.nu`:
+
+```nu
+$env.config.menus ++= [{name: completion_menu, only_buffer_difference: false, marker: "| ", type: {layout: ide}, style: {}}]
+```
+
+<img src="docs/demo-nu.gif" width="900" alt="In nushell, Tab after git ch, make and docker run --r opens nushell's menu next to the line. It lists subcommands, branches, make targets and options, with the description of the selected item in a box beside it.">
+
+Each Tab starts the binary once (about 4 ms). Generators run in that call, and there is no cache between calls.
+Completion uses literal words; Nushell expressions such as `$"..."` are not evaluated.
+
 ### Update
 
 ```sh
@@ -206,14 +226,22 @@ git clone https://github.com/glpecile/hachikuji && cd hachikuji && make install
 | `zsh tests/memory.zsh` | Private memory of 12 helpers (3) |
 | `make bench` | Latency inside the helper (4a) |
 
-`spike/` has the Milestone 0 rendering spike (pure zsh, 8 fake items) and its test. The demo GIF comes from [VHS](https://github.com/charmbracelet/vhs): `make && vhs docs/demo/demo.tape`.
+With Nushell installed, check its completer separately after `make`:
+
+```sh
+target/release/hachikuji init nu > /tmp/hachikuji-test.nu
+HACHIKUJI_INDEX="$PWD/build/specs.idx" nu -n -c 'source /tmp/hachikuji-test.nu; source tests/nu.nu'
+```
+
+`spike/` has the Milestone 0 rendering spike (pure zsh, 8 fake items) and its test. The demo GIFs come from [VHS](https://github.com/charmbracelet/vhs): `make && vhs docs/demo/demo.tape` (zsh) and `vhs docs/demo/nu.tape` (nushell).
 
 ## Limits
 
 - Aliases and `PATH` are read when the helper starts; later changes need a new shell.
 - A switch between `bindkey -v` and `bindkey -e` after the first prompt is not seen.
 - No popup for commands without a static spec (`cargo`, for example), and no history or usage ranking.
-- zsh only. There are no plans for bash, fish or Windows.
+- zsh and nushell only. There are no plans for bash, fish or Windows.
+- In nushell, an option that puts the cursor between quotes (`curl -d` gives `-d '|'` in zsh) inserts the text before the quotes (`-d `).
 
 ## License
 

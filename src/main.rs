@@ -11,20 +11,24 @@ use std::process::exit;
 
 const USAGE: &str = "usage:
   hachikuji init zsh                 print the line to add to ~/.zshrc
+  hachikuji init nu                  print the nushell config (save it in an autoload folder)
   hachikuji serve <dir>              run the helper (the shell starts it)
   hachikuji compile <json-dir> <out> build the spec index from spec JSON
   hachikuji complete [--pwd D] <buf> print the popup for a buffer (debug)
+  hachikuji complete --nu <words-json> print the completions as nushell completer JSON
   hachikuji bench <file>             type each line key by key (10,000 keys); print latency
   hachikuji update                   install the newest release (uses curl)
   hachikuji version";
 
 const ZSH: &str = include_str!("../shell/hachikuji.zsh");
+const NU: &str = include_str!("../shell/hachikuji.nu");
 
 fn main() {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let a: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
     match a.as_slice() {
         ["init", "zsh"] => init(),
+        ["init", "nu"] => print!("{}", NU.replace("@BIN@", &std::env::current_exe().unwrap_or_default().to_string_lossy())),
         ["serve", dir] => {
             let _ = serve::serve(Path::new(dir));
         }
@@ -34,6 +38,7 @@ fn main() {
                 exit(1);
             }
         }
+        ["complete", "--nu", buf] => nu(buf),
         ["complete", "--pwd", pwd, buf] => debug(pwd, buf),
         ["complete", buf] => debug(&std::env::current_dir().unwrap().to_string_lossy(), buf),
         ["bench", file] => bench(file),
@@ -136,6 +141,54 @@ fn debug(pwd: &str, buf: &str) {
     println!("count={} replace={} insert={:?}{}", f[3], f[5], f[6], f[7]);
 }
 
+/// The completions for nushell's words, as the record its external completer returns.
+/// Generators run here, not async: nushell waits for the completer anyway. Prints null when
+/// there is nothing, so nushell completes file names (commands with no spec).
+fn nu(words: &str) {
+    let Ok(mut words) = serde_json::from_str::<Vec<String>>(words) else { return println!("null") };
+    let cur = words.pop().unwrap_or_default();
+    // Nushell already split the command; zsh's tokenizer has different quoting and operators.
+    let line = tokenize::Line { words, cur, ..Default::default() };
+    let pwd = std::env::current_dir().unwrap_or_default().to_string_lossy().into_owned();
+    let (ix, cfg) = (serve::load_index(), render::Config::load());
+    let mut cache = generate::Cache::default();
+    let mut res = complete::complete(&ix, &line, &pwd, &cache, &[]);
+    for g in res.missing {
+        let items = generate::run(&g);
+        cache.put(g.key, items);
+    }
+    res = complete::complete(&ix, &line, &pwd, &cache, &[]);
+    if !cfg.fuzzy {
+        res.cands.retain(|c| c.score < 2);
+    }
+    if res.cands.is_empty() {
+        return println!("null");
+    }
+    let items: Vec<_> = res.cands.iter().map(|c| serde_json::json!({ "value": nu_value(c), "description": c.desc })).collect();
+    // hachikuji already filtered and ranked them.
+    println!("{}", serde_json::json!({ "completions": items, "options": { "filter": false, "sort": false } }));
+}
+
+/// The text nushell inserts, with the space or `/` after it (nushell adds no space). Nushell
+/// cannot put the cursor in the middle, so `-m '{cursor}'` inserts the text before the quote (`-m `).
+fn nu_value(c: &complete::Cand) -> String {
+    if c.raw {
+        return c.body.split_once("{cursor}").map_or(&*c.body, |(head, _)| head.trim_end_matches(['\'', '"'])).to_string();
+    }
+    let (mut text, space) = if c.suffix == " " { (c.body.clone(), " ") } else { (format!("{}{}", c.body, c.suffix), "") };
+    // Quoting disables nushell's tilde expansion, so expand home paths first.
+    if let Some(rest) = text.strip_prefix("~/") {
+        if let Ok(home) = std::env::var("HOME") {
+            text = format!("{home}/{rest}");
+        }
+    }
+    if !text.starts_with('~') && !text.chars().any(|ch| ch.is_whitespace() || ch.is_control() || "'\"`$()[]{}|;#\\*?".contains(ch)) {
+        return text + space;
+    }
+    // Rust's string escapes (\", \\, \n, \t, \u{..}) are valid in a nushell "..." string.
+    format!("{text:?}{space}")
+}
+
 /// Latency inside the helper: parse the request frame, complete, render, write the response.
 fn bench(file: &str) {
     use std::io::Write;
@@ -178,7 +231,26 @@ fn bench(file: &str) {
 
 #[cfg(test)]
 mod tests {
-    use super::version;
+    use super::{nu_value, version};
+    use crate::complete::{Cand, Kind};
+
+    #[test]
+    fn nu_values_quote_for_nushell() {
+        let c = |body: &str, suffix, raw| Cand { name: "-m, --message".into(), desc: String::new(), kind: Kind::Arg, priority: 0, score: 0, body: body.into(), suffix, raw };
+        assert_eq!(nu_value(&c("main", " ", false)), "main ");
+        assert_eq!(nu_value(&c("src", "/", false)), "src/");
+        assert_eq!(nu_value(&c("my dir", "/", false)), r#""my dir/""#);
+        assert_eq!(nu_value(&c(r#"a"b\c"#, " ", false)), r#""a\"b\\c" "#);
+        assert_eq!(nu_value(&c("a\tb", "=", false)), r#""a\tb=""#);
+        assert_eq!(nu_value(&c("what?.txt", " ", false)), r#""what?.txt" "#);
+        assert_eq!(nu_value(&c("~literal", " ", false)), r#""~literal" "#);
+        if let Ok(home) = std::env::var("HOME") {
+            assert_eq!(nu_value(&c("~/my dir", "/", false)), format!("{:?}", format!("{home}/my dir/")));
+        }
+        assert_eq!(nu_value(&c("-m '{cursor}'", "", true)), "-m ");
+        assert_eq!(nu_value(&c("http.{cursor}", "", true)), "http.");
+        assert_eq!(nu_value(&c("--force", "", true)), "--force");
+    }
 
     #[test]
     fn versions_compare_as_numbers() {
