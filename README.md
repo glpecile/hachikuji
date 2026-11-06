@@ -44,7 +44,7 @@ The helper starts on the first key, not in `.zshrc`.
 
 ### Nushell
 
-In nushell, hachikuji supplies the items and nushell's own completion menu shows them. Nushell calls hachikuji on Tab for external commands (`git`, `docker`, `make`). Nushell's own commands keep their own completions. Save the config once, in an autoload folder:
+In nushell, hachikuji supplies the items and nushell's own completion menu shows them. Nushell calls hachikuji on Tab for external commands (`git`, `docker`, `make`). Nushell's own commands keep their own completions. Save the config in an autoload folder. Save it again after an update:
 
 ```nu
 mkdir ($nu.user-autoload-dirs | first)
