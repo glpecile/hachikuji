@@ -4,7 +4,6 @@ class Hachikuji < Formula
   desc "IDE-style completion popup for zsh that uses almost no memory"
   homepage "https://github.com/glpecile/hachikuji"
   license "MIT"
-  version "@VERSION@"
 
   on_macos do
     on_arm do
@@ -19,7 +18,7 @@ class Hachikuji < Formula
 
   def install
     bin.install "bin/hachikuji"
-    (share/"hachikuji").install Dir["share/hachikuji/*"]
+    pkgshare.install Dir["share/hachikuji/*"]
   end
 
   def caveats
