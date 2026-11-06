@@ -60,6 +60,7 @@ $env.config.menus ++= [{name: completion_menu, only_buffer_difference: false, ma
 <img src="docs/demo-nu.gif" width="900" alt="In nushell, Tab after git ch, make and docker run --r opens nushell's menu next to the line. It lists subcommands, branches, make targets and options, with the description of the selected item in a box beside it.">
 
 Each Tab starts the binary once (about 4 ms). Generators run in that call, and there is no cache between calls.
+Completion uses literal words; Nushell expressions such as `$"..."` are not evaluated.
 
 ### Update
 
@@ -224,6 +225,13 @@ git clone https://github.com/glpecile/hachikuji && cd hachikuji && make install
 | `python3 tests/startup.py` | Startup cost (5) |
 | `zsh tests/memory.zsh` | Private memory of 12 helpers (3) |
 | `make bench` | Latency inside the helper (4a) |
+
+With Nushell installed, check its completer separately after `make`:
+
+```sh
+target/release/hachikuji init nu > /tmp/hachikuji-test.nu
+HACHIKUJI_INDEX="$PWD/build/specs.idx" nu -n -c 'source /tmp/hachikuji-test.nu; source tests/nu.nu'
+```
 
 `spike/` has the Milestone 0 rendering spike (pure zsh, 8 fake items) and its test. The demo GIFs come from [VHS](https://github.com/charmbracelet/vhs): `make && vhs docs/demo/demo.tape` (zsh) and `vhs docs/demo/nu.tape` (nushell).
 
