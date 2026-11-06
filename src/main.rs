@@ -173,7 +173,7 @@ fn nu_value(c: &complete::Cand) -> String {
         return if c.body.contains("{cursor}") { format!("{} ", c.name) } else { c.body.clone() };
     }
     let (text, space) = if c.suffix == " " { (c.body.clone(), " ") } else { (format!("{}{}", c.body, c.suffix), "") };
-    if !text.chars().any(|ch| ch.is_whitespace() || ch.is_control() || "'\"`$()[]{}|;#\\".contains(ch)) {
+    if !text.chars().any(|ch| ch.is_whitespace() || ch.is_control() || "'\"`$()[]{}|;#\\*?".contains(ch)) {
         return text + space;
     }
     // Rust's string escapes (\", \\, \n, \t, \u{..}) are valid in a nushell "..." string.
@@ -233,6 +233,7 @@ mod tests {
         assert_eq!(nu_value(&c("my dir", "/", false)), r#""my dir/""#);
         assert_eq!(nu_value(&c(r#"a"b\c"#, " ", false)), r#""a\"b\\c" "#);
         assert_eq!(nu_value(&c("a\tb", "=", false)), r#""a\tb=""#);
+        assert_eq!(nu_value(&c("what?.txt", " ", false)), r#""what?.txt" "#);
         assert_eq!(nu_value(&c("-m '{cursor}'", "", true)), "--message ");
         assert_eq!(nu_value(&c("--force", "", true)), "--force");
     }
