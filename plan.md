@@ -16,7 +16,7 @@ inshellisense uses about 95 MB per terminal (a Node launcher of about 31 MB and 
 4. **Latency:** p99 below 16 ms on a recent Mac, for static specs, for two numbers: (a) inside the helper, from request read to response written, and (b) end to end, from key press to an updated popup on screen. Slow sources (generators that run commands) are async and never block typing.
 5. **Startup:** adds less than 10 ms to zsh startup. The helper starts lazily, the first time the buffer is not empty, not in `.zshrc`.
 6. **Fail silent.** If the helper crashes, hangs or is missing, the shell works as normal, with no popup and no error text. zsh must never block on the helper. Restart the helper at most once a minute.
-7. **No network** at runtime. No telemetry.
+7. **No network** at runtime. No telemetry. The one exception is `hachikuji update`, which the user runs; it calls the system `curl`, so the binary has no network code.
 8. **zsh only** for v1. macOS first, Linux must build. Bash and fish are non-goals for now.
 9. **Theme follows the terminal.** Use only the 16 ANSI palette colors (0 to 15), the default foreground and background, and attributes (bold, dim, reverse). Never use RGB or the 256-color cube (16 to 255): terminals do not change those colors when the theme changes. When the terminal switches between light and dark (for example Ghostty with `theme = light:Catppuccin Latte,dark:Catppuccin Mocha`), the popup follows with no code and no restart.
 

@@ -25,5 +25,7 @@ install -d "$prefix/bin" "$prefix/share/hachikuji"
 install -m 755 "$d/bin/hachikuji" "$prefix/bin/hachikuji"
 install -m 644 "$d"/share/hachikuji/* "$prefix/share/hachikuji/"
 
-echo "Installed to $prefix. Add this line to ~/.zshrc, before zsh-syntax-highlighting:"
+echo "Installed to $prefix."
+[ -n "${HACHIKUJI_UPDATE-}" ] && exit 0 # `hachikuji update`: the line is in ~/.zshrc already
+echo "Add this line to ~/.zshrc, before zsh-syntax-highlighting:"
 "$prefix/bin/hachikuji" init zsh
