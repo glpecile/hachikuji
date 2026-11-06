@@ -40,6 +40,15 @@ HACHIKUJI_BIN='/Users/you/.local/bin/hachikuji' source '/Users/you/.local/share/
 
 The helper starts on the first key, not in `.zshrc`.
 
+### Update
+
+```sh
+hachikuji version   # the installed version
+hachikuji update    # install the newest release
+```
+
+`update` asks GitHub for the newest release with `curl`. A script install is updated in place. A Homebrew install or a source build prints the command to run instead (`brew upgrade hachikuji`, or `git pull && make install`). Open shells keep the old version until they close.
+
 ## Keys
 
 | Key | Popup open | Popup closed |
@@ -126,7 +135,7 @@ Memory: `footprint` of 12 open terminals (inshellisense: `node` 13 MB + native 3
 | 4b | Key press to popup | p99 < 16 ms | p99 11.6 ms |
 | 5 | Added startup | < 10 ms | 6.4 to 8.0 ms |
 | 6 | Fail silent | no hang | writes never block; a hung helper is killed after 1 s |
-| 7 | No network | none | no network code |
+| 7 | No network | none in the helper | no network code; only `hachikuji update` runs `curl` |
 | 8 | Platforms | macOS; Linux builds | macOS arm64, x86_64; Linux aarch64 |
 | 9 | Theme colors | palette 0 to 15 | SGR 0, 1, 7, 32 to 36, 39, 90 only |
 
