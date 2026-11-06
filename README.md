@@ -47,7 +47,7 @@ hachikuji version   # the installed version
 hachikuji update    # install the newest release
 ```
 
-`update` asks GitHub for the newest release with `curl`. A script install is updated in place. A Homebrew install or a source build prints the command to run instead (`brew upgrade hachikuji`, or `git pull && make install`). Open shells keep the old version until they close.
+`update` asks GitHub for the newest release with `curl`. A script install, or a source build installed with `make install`, is replaced in place with release artifacts (macOS or Linux aarch64). A Homebrew install or a binary run from a source checkout prints the command to run instead (`brew upgrade hachikuji`, or `git pull && make install`). Open shells keep the old version until they close.
 
 ## Keys
 
