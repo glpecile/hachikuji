@@ -1,7 +1,7 @@
 # Homebrew formula for the tap glpecile/homebrew-tap (file: Formula/hachikuji.rb).
 # tools/release.sh fills in the version, URLs and checksums.
 class Hachikuji < Formula
-  desc "IDE-style completion popup for zsh that uses almost no memory"
+  desc "IDE-style completions for zsh and nushell that use almost no memory"
   homepage "https://github.com/glpecile/hachikuji"
   license "MIT"
 
@@ -25,11 +25,16 @@ class Hachikuji < Formula
     <<~EOS
       Run `hachikuji init zsh` and add the line it prints to ~/.zshrc,
       before zsh-syntax-highlighting (which must load last).
+
+      In nushell, save the config in an autoload folder:
+        hachikuji init nu | save -f ($nu.user-autoload-dirs | first | path join hachikuji.nu)
     EOS
   end
 
   test do
     assert_match "source", shell_output("#{bin}/hachikuji init zsh")
     assert_match "count=", shell_output("#{bin}/hachikuji complete 'git chec'")
+    assert_match "completer", shell_output("#{bin}/hachikuji init nu")
+    assert_match "checkout", shell_output("#{bin}/hachikuji complete --nu '[\"git\",\"chec\"]'")
   end
 end

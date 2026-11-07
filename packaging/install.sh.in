@@ -29,3 +29,4 @@ echo "Installed to $prefix."
 [ -n "${HACHIKUJI_UPDATE-}" ] && exit 0 # `hachikuji update`: the line is in ~/.zshrc already
 echo "Add this line to ~/.zshrc, before zsh-syntax-highlighting:"
 "$prefix/bin/hachikuji" init zsh
+echo "In nushell: ^'$prefix/bin/hachikuji' init nu | save -f (\$nu.user-autoload-dirs | first | path join hachikuji.nu)"
