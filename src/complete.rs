@@ -224,7 +224,9 @@ impl<'a> Walk<'a> {
                 }
             }
             if let Some(a) = cur_arg {
-                if a.has(flag::IS_CMD) {
+                // `sudo `: any command. `yarn `: the arg's own items (package.json scripts), not PATH.
+                let own = a.has(flag::T_FILES | flag::T_FOLDERS) || self.ix.children(&a).next().is_some();
+                if a.has(flag::IS_CMD) && !own {
                     return self.commands(aliases);
                 }
                 self.arg(&a);
@@ -502,6 +504,7 @@ mod tests {
         compile::add_root(&mut w, "git", &git);
         let more = [
             ("sudo", r#"{"name":"sudo","options":[{"name":"-u","args":{"name":"user"}}],"args":{"name":"command","isCommand":true}}"#),
+            ("runx", r#"{"name":"runx","args":{"name":"script","isCommand":true,"suggestions":["alpha"]}}"#),
             ("aws", r#"{"name":"aws","subcommands":[{"name":"s3","loadSpec":"aws/s3"}]}"#),
             ("aws/s3", r#"{"name":"s3","subcommands":[{"name":"cp","description":"Copy"},{"name":"ls"}]}"#),
             ("tool", r#"{"name":"tool","options":[
@@ -562,6 +565,8 @@ mod tests {
         assert_eq!(names(&ix, "aws s3 c")[0], "cp");
         assert_eq!(names(&ix, "sudo -u root git sta")[0], "status");
         assert_eq!(names(&ix, "FOO=1 /usr/bin/git stat")[0], "status");
+        // An isCommand arg with its own items (yarn scripts) shows them, not the PATH commands.
+        assert_eq!(names(&ix, "runx "), ["alpha"]);
     }
 
     #[test]
